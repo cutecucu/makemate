@@ -90,8 +90,18 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // --- Firebase 설정 ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // 중요: 이 앱을 GitHub 등 다른 곳에서 사용하려면, 
+        // 아래 firebaseConfig 객체를 자신의 Firebase 프로젝트 설정으로 교체해야 합니다.
+        // Firebase 콘솔 -> 프로젝트 설정 -> 내 앱 -> SDK 설정 및 구성에서 확인할 수 있습니다.
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
@@ -177,11 +187,11 @@
                 document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('touchmove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('touchend', onMouseUp);
                 const batch = writeBatch(db);
-                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userId);
+                const userRef = doc(db, 'users', userId);
                 batch.update(userRef, { top: card.style.top, left: card.style.left });
                 if (partnerCard) {
                     const partnerId = partnerCard.id.replace('card-', '');
-                    const partnerRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', partnerId);
+                    const partnerRef = doc(db, 'users', partnerId);
                     batch.update(partnerRef, { top: partnerCard.style.top, left: partnerCard.style.left });
                 }
                 await batch.commit();
@@ -212,7 +222,7 @@
                 imageUrl = `https://picsum.photos/seed/${Math.abs(hash)}/140`;
             }
             try {
-                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userId);
+                const userRef = doc(db, 'users', userId);
                 await setDoc(userRef, { name, nickname, imageUrl, top: 'center', left: 'center', chatRoomId: null });
                 await requestMicrophonePermission();
                 showScreen('lobby');
@@ -244,7 +254,7 @@
         };
         
         const listenForLobbyState = () => {
-            const lobbyStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'lobbyState', 'main');
+            const lobbyStateRef = doc(db, 'lobbyState', 'main');
             if(unsubscribeLobbyState) unsubscribeLobbyState();
             unsubscribeLobbyState = onSnapshot(lobbyStateRef, (docSnap) => {
                 currentPairs = docSnap.exists() ? (docSnap.data().pairs || []) : [];
@@ -265,7 +275,7 @@
                 const containerRect = cardArea.getBoundingClientRect();
                 const newTop = (containerRect.height / 2) - 90; const newLeft = (containerRect.width / 2) - 70;
                 card.style.top = `${newTop}px`; card.style.left = `${newLeft}px`;
-                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', user.id), { top: `${newTop}px`, left: `${newLeft}px` });
+                updateDoc(doc(db, 'users', user.id), { top: `${newTop}px`, left: `${newLeft}px` });
             } else { card.style.top = user.top || '10px'; card.style.left = user.left || '10px'; }
             const pairInfo = currentPairs.find(p => p.ids.includes(user.id));
             const cardBg = pairInfo ? pairInfo.color : 'bg-white/70';
@@ -282,7 +292,7 @@
         };
 
         const listenForUsers = () => {
-            const usersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
+            const usersCollectionRef = collection(db, 'users');
             if (unsubscribeUsers) unsubscribeUsers();
             unsubscribeUsers = onSnapshot(usersCollectionRef, (snapshot) => {
                 const usersInSnapshot = new Set(); allUsers = [];
@@ -309,7 +319,7 @@
             allUsers.forEach((user, index) => {
                 const row = Math.floor(index / cardsPerRow); const col = index % cardsPerRow;
                 const newLeft = col * (cardWidth + padding) + padding; const newTop = row * (cardHeight + padding) + topBoundary;
-                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users', user.id), { top: `${newTop}px`, left: `${newLeft}px` });
+                batch.update(doc(db, 'users', user.id), { top: `${newTop}px`, left: `${newLeft}px` });
             });
             await batch.commit();
         };
@@ -329,18 +339,18 @@
                 const row = Math.floor(pairIndex / pairsPerRow); const col = pairIndex % pairsPerRow;
                 const top = row * (cardHeight + padding) + topBoundary;
                 const leftStart = col * (pairWidth + padding) + padding;
-                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users', students[i].id), { top: `${top}px`, left: `${leftStart}px` });
-                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users', students[i+1].id), { top: `${top}px`, left: `${leftStart + cardWidth + pairSpacing}px` });
+                batch.update(doc(db, 'users', students[i].id), { top: `${top}px`, left: `${leftStart}px` });
+                batch.update(doc(db, 'users', students[i+1].id), { top: `${top}px`, left: `${leftStart + cardWidth + pairSpacing}px` });
                 pairIndex++;
             }
             if (students.length % 2 !== 0) {
                 const oddStudent = students[students.length - 1];
                 const top = Math.floor(pairIndex / pairsPerRow) * (cardHeight + padding) + topBoundary;
                 const left = (pairIndex % pairsPerRow) * (pairWidth + padding) + padding;
-                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users', oddStudent.id), { top: `${top}px`, left: `${left}px` });
+                batch.update(doc(db, 'users', oddStudent.id), { top: `${top}px`, left: `${left}px` });
             }
             await batch.commit();
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lobbyState', 'main'), { pairs });
+            await setDoc(doc(db, 'lobbyState', 'main'), { pairs });
         };
         
         const handleCreateChatRooms = async () => {
@@ -360,10 +370,10 @@
                     const batch = writeBatch(db);
                     for (const pair of currentPairs) {
                         const situation = allSituations[Math.floor(Math.random() * allSituations.length)];
-                        const chatRoomRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'chatRooms'));
+                        const chatRoomRef = doc(collection(db, 'chatRooms'));
                         batch.set(chatRoomRef, { situationId: situation.id, pairIds: pair.ids, step: 0, roles: {} });
-                        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users', pair.ids[0]), { chatRoomId: chatRoomRef.id });
-                        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users', pair.ids[1]), { chatRoomId: chatRoomRef.id });
+                        batch.update(doc(db, 'users', pair.ids[0]), { chatRoomId: chatRoomRef.id });
+                        batch.update(doc(db, 'users', pair.ids[1]), { chatRoomId: chatRoomRef.id });
                     }
                     await batch.commit();
                     countdownOverlay.classList.add('hidden');
@@ -373,7 +383,7 @@
 
         const listenToChatRoom = (roomId) => {
             if (unsubscribeChatRoom) unsubscribeChatRoom();
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'chatRooms', roomId);
+            const roomRef = doc(db, 'chatRooms', roomId);
             unsubscribeChatRoom = onSnapshot(roomRef, (docSnap) => {
                 if (docSnap.exists()) {
                     showScreen('chat');
@@ -458,12 +468,12 @@
                 } else if (roomData.step > dialogues.length) {
                      dialogueContent.innerHTML = `<p class="text-3xl font-bold">모든 대화가 종료되었습니다!</p>`;
                 }
-                document.getElementById('start-dialogue-btn').onclick = () => updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chatRooms', roomId), { step: 1 });
+                document.getElementById('start-dialogue-btn').onclick = () => updateDoc(doc(db, 'chatRooms', roomId), { step: 1 });
             }
         };
 
         const handleRoleSelect = async (roomId, roleNum) => {
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'chatRooms', roomId);
+            const roomRef = doc(db, 'chatRooms', roomId);
             await updateDoc(roomRef, { [`roles.${userId}`]: roleNum });
         };
         
@@ -490,7 +500,7 @@
                     speechResult.style.color = 'lightgreen';
                     confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
                     setTimeout(() => {
-                         updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chatRooms', roomId), { step: currentStep + 1 });
+                         updateDoc(doc(db, 'chatRooms', roomId), { step: currentStep + 1 });
                     }, 1500);
                 } else {
                     speechResult.textContent = '다시 시도해보세요!';
@@ -506,13 +516,13 @@
 
         const handleLeave = async () => {
             if (userId) {
-                try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', userId)); } 
+                try { await deleteDoc(doc(db, 'users', userId)); } 
                 catch (error) { console.error("Error deleting user document:", error); }
             }
         };
         
         const fetchAllSituations = async () => {
-            const situationsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'situations');
+            const situationsCollectionRef = collection(db, 'situations');
             const snapshot = await getDocs(situationsCollectionRef);
             allSituations = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
         };
@@ -548,7 +558,7 @@
                 rows.forEach(row => {
                     const values = row.split(',');
                     const situationData = { title: values[0], role1: values[1], role2: values[2], dialogue1: values[3], translation1: values[4], dialogue2: values[5], translation2: values[6] };
-                    const situationRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'situations'));
+                    const situationRef = doc(collection(db, 'situations'));
                     batch.set(situationRef, situationData);
                 });
                 await batch.commit();
@@ -560,7 +570,7 @@
 
         const handleDeleteSituation = async (id) => {
             if (confirm("정말로 이 상황을 삭제하시겠습니까?")) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'situations', id));
+                await deleteDoc(doc(db, 'situations', id));
                 openSituationManager();
             }
         };
@@ -577,13 +587,13 @@
         async function initialize() {
             showScreen('login');
             try {
-                const customToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                let userCredential;
-                if (customToken) {
-                    userCredential = await signInWithCustomToken(auth, customToken);
-                } else {
-                    userCredential = await signInAnonymously(auth);
+                // For external deployment, use signInAnonymously.
+                // The custom token is only available in the dev environment.
+                if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+                    loginError.textContent = "Firebase 설정이 필요합니다.";
+                    return;
                 }
+                const userCredential = await signInAnonymously(auth);
                 userId = userCredential.user.uid;
                 
                 nameInput.disabled = false; nicknameInput.disabled = false;
@@ -591,7 +601,7 @@
                 loginError.textContent = '';
             } catch (error) {
                 console.error("Authentication failed:", error);
-                loginError.textContent = "인증에 실패했습니다. 페이지를 새로고침 해주세요.";
+                loginError.textContent = "인증에 실패했습니다. Firebase 설정을 확인해주세요.";
             }
         }
         
@@ -599,3 +609,4 @@
     </script>
 </body>
 </html>
+" has been selected. The user wants me to fix an issue where the app only shows "인증 정보를 확인하는 중입니다..." on GitHub. I will modify the initialization logic to better handle external deployment by primarily using anonymous sign-in and providing a clearer error message if the Firebase config is missing. I will also remove the `signInWithCustomToken` logic as it's not applicable for GitHub deployment.
