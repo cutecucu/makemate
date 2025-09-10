@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국어 어휘 플래시카드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+    <style>
+        /* 기본 폰트 설정 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        /* 3D 플래시카드 효과를 위한 스타일 */
+        .card-container {
+            perspective: 1000px; /* 3D 효과를 위한 원근감 */
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d; /* 자식 요소들을 3D 공간에 배치 */
+        }
+
+        .card.is-flipped .card-inner {
+            transform: rotateY(180deg); /* Y축을 기준으로 180도 회전 */
+        }
+
+        .card-front,
+        .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari, Chrome 뒷면 숨기기 */
+            backface-visibility: hidden; /* 뒷면 숨기기 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        .card-back {
+            transform: rotateY(180deg); /* 뒷면은 미리 180도 회전시켜 놓음 */
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+        
+        /* 버튼 비활성화 스타일 */
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md mx-auto">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">어휘 플래시카드</h1>
+        <p class="text-center text-gray-500 mb-6">카드를 클릭하여 뜻과 예문을 확인하세요.</p>
+        
+        <!-- 플래시카드 -->
+        <div id="card-container" class="card-container w-full h-80 mb-6">
+            <div id="card" class="card w-full h-full cursor-pointer">
+                <div id="card-inner" class="card-inner">
+                    <!-- 카드 앞면 -->
+                    <div id="card-front" class="card-front bg-white text-gray-900">
+                        <h2 id="word" class="text-5xl font-bold text-center"></h2>
+                    </div>
+                    <!-- 카드 뒷면 -->
+                    <div id="card-back" class="card-back bg-blue-500 text-white">
+                        <div>
+                            <h3 id="meaning" class="text-xl font-bold mb-4 border-b-2 border-blue-300 pb-2"></h3>
+                            <div class="space-y-3">
+                                <p id="example1" class="text-base"></p>
+                                <p id="example2" class="text-base"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 네비게이션 -->
+        <div class="flex items-center justify-between w-full">
+            <button id="prev-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md disabled:bg-gray-200">
+                이전
+            </button>
+            <div id="counter" class="text-lg font-medium text-gray-600"></div>
+            <button id="next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-md disabled:bg-blue-300">
+                다음
+            </button>
+        </div>
+        
+        <!-- 단어 섞기 버튼 -->
+        <div class="mt-6 text-center">
+            <button id="shuffle-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-5 rounded-lg transition duration-300 shadow-md">
+                단어 섞기
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 사용자가 제공한 CSV 데이터를 변수에 저장합니다.
+        const csvData = `어휘,뜻,예문 1,예문 2
+가라뜨다,큰 소리를 내어 꾸짖다.,아버지는 거짓말을 한 동생을 불호령으로 가라뜨셨다.,장군은 나태해진 병사들을 향해 가라뜨며 군기를 바로잡았다.
+가랑가랑,액체가 넘칠 듯이 가득 찬 모양. 또는 목소리가 갈라지는 모양.,솥에 물이 가랑가랑해서 금방이라도 넘칠 것 같았다.,감기에 걸려 목소리가 가랑가랑하게 잠겼다.
+가로새다,말대답을 하거나 순종하지 않고 반항하다.,아이가 자꾸 어른들 말에 가로새는 버릇이 생겨 걱정이다.,그는 부당한 지시에는 가로새며 자신의 의견을 분명히 밝혔다.
+가리다,"1. 골라내다. 2. 부끄러워하거나 꺼리다. 3. 막아서 보이지 않게 하다.",콩밥을 싫어하는 동생은 밥에서 콩만 가려내고 먹었다.,그녀는 낯을 가려서 처음 보는 사람에게 말을 잘 못 건다.
+모가비,일꾼이나 광대 등의 집단에서 우두머리를 이르는 순 우리말,일꾼들은 모가비의 지시에 따라 분주하게 움직였다.,모가비는 단원들의 식사를 일일이 챙기며 다음 공연을 준비했다.
+감실감실,"먼 곳에서 물체가 아른거리며 움직이는 모양. 또는 눈을 감았다 떴다 하는 모양.","먼바다에 고깃배의 불빛이 감실감실 보였다.","피곤한 아이는 눈을 감실감실하며 꾸벅꾸벅 졸았다."
+오롱이조롱이,작은 것들이 고르지 않게 많이 매달려 있는 모양.,포도 넝쿨에 오롱이조롱이 열린 포도송이가 탐스러웠다.,병아리들이 어미 닭 뒤를 오롱이조롱이 따라다녔다.
+오롱조롱,작은 열매 같은 것들이 한곳에 많이 매달려 있는 모양.,마당에 널어놓은 옥수수가 오롱조롱 매달려 있다.,아이의 머리에 오롱조롱 꽂혀있는 머리핀이 귀여웠다.
+오밀조밀,솜씨나 재간이 매우 세밀하고 교묘한 모양.,그녀의 이목구비는 오밀조밀하게 모여 있어 귀여운 인상을 주었다.,아이는 오밀조밀한 손으로 정교한 종이배를 접었다.
+올망졸망,작고 고른 것들이 고만고만하게 많이 모여 있는 모양.,도토리들이 바닥에 올망졸망 떨어져 있었다.,아이들은 교실에 올망졸망 모여 앉아 선생님을 기다렸다.
+옹기종기,작은 것들이 한곳에 많이 모여 있는 모양.,아이들이 모닥불 주위에 옹기종기 모여 앉았다.,마을 지붕들이 산비탈에 옹기종기 모여 있는 풍경이 아름다웠다.
+자리끼,밤에 자다가 마시기 위해 잠자리의 머리맡에 준비해 두는 물.,할머니께서는 주무시기 전에 항상 자리끼를 떠다 놓으신다.,밤중에 목이 말라 깨어 머리맡에 놓인 자리끼를 마셨다.
+자작자작,얕은 물이나 액체가 졸아붙거나 타는 소리.,냄비에서 찌개가 자작자작 끓고 있었다.,군불이 자작자작 타는 소리가 평화롭게 들렸다.`;
+        
+        // DOM 요소 가져오기
+        const card = document.getElementById('card');
+        const wordEl = document.getElementById('word');
+        const meaningEl = document.getElementById('meaning');
+        const example1El = document.getElementById('example1');
+        const example2El = document.getElementById('example2');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const counterEl = document.getElementById('counter');
+
+        let words = [];
+        let currentIndex = 0;
+
+        // CSV 데이터를 파싱하여 객체 배열로 변환하는 함수
+        function parseCSV(data) {
+            const lines = data.trim().split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                // 간단한 파싱: 큰따옴표로 묶인 쉼표를 처리하지는 않지만,
+                // 제공된 데이터 형식에는 충분합니다.
+                const values = line.split(',');
+                const obj = {};
+                headers.forEach((header, i) => {
+                    obj[header.trim()] = values[i].trim().replace(/^"|"$/g, '');
+                });
+                return obj;
+            });
+        }
+
+        // 카드를 업데이트하는 함수
+        function updateCard() {
+            if (words.length === 0) return;
+            const currentWord = words[currentIndex];
+            wordEl.textContent = currentWord.어휘;
+            meaningEl.textContent = currentWord.뜻;
+            example1El.textContent = `예문 1) ${currentWord['예문 1']}`;
+            example2El.textContent = `예문 2) ${currentWord['예문 2']}`;
+            
+            // 카드 카운터 업데이트
+            counterEl.textContent = `${currentIndex + 1} / ${words.length}`;
+            
+            // 버튼 활성화/비활성화
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === words.length - 1;
+            
+            // 새 카드를 보여줄 때 항상 앞면으로
+            card.classList.remove('is-flipped');
+        }
+
+        // 배열을 무작위로 섞는 함수 (Fisher-Yates 알고리즘)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // 초기화 함수
+        function init() {
+            words = parseCSV(csvData);
+            currentIndex = 0;
+            updateCard();
+        }
+
+        // 이벤트 리스너 설정
+        card.addEventListener('click', () => {
+            card.classList.toggle('is-flipped');
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < words.length - 1) {
+                currentIndex++;
+                updateCard();
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateCard();
+            }
+        });
+
+        shuffleBtn.addEventListener('click', () => {
+            shuffleArray(words);
+            currentIndex = 0;
+            updateCard();
+        });
+
+        // 앱 시작
+        init();
+    </script>
+</body>
+</html>
