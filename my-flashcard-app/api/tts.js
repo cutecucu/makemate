@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
 export const config = {
-    runtime: 'edge',
+    runtime: 'nodejs',
 };
 
 export default async function handler(req) {
