@@ -307,17 +307,11 @@
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
             let db, auth, userId;
             
-            async function initializeFirebaseAndLoadData() {
+            async function initializeFirebase() {
                 try {
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
-                    
-                    if (typeof __initial_auth_token !== 'undefined') {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
                     
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
@@ -325,11 +319,10 @@
                              await loadSavedFiles();
                              await restoreLastSession();
                         } else {
-                             // This case is unlikely to be reached due to signInAnonymously
-                             console.log("User is not authenticated. Cannot load saved files.");
+                            // This part ensures a user is always authenticated
+                            await signInAnonymously(auth);
                         }
                     });
-
                 } catch (e) {
                     console.error("Firebase initialization failed:", e);
                     initialPage.classList.remove('hidden');
@@ -337,7 +330,7 @@
                     showMessage("데이터베이스 연결에 실패했습니다. 기록은 저장되지 않습니다.");
                 }
             }
-            initializeFirebaseAndLoadData();
+            initializeFirebase();
 
 
             // CSV sample file content with BOM
@@ -452,7 +445,7 @@
                     });
                     
                     if (words.length > 0) {
-                        if (userId) { // Check if userId is available before proceeding
+                        if (userId) {
                             const newDocRef = await addDoc(collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`), {
                                 name: file.name,
                                 wordsJson: JSON.stringify(words),
@@ -460,6 +453,7 @@
                                 timestamp: Date.now()
                             });
                             loadData({ wordsJson: JSON.stringify(words), memorizedWords: [] }, file.name, newDocRef.id);
+                            fileModal.classList.add('hidden');
                         } else {
                             showMessage("사용자 인증 정보가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.");
                         }
@@ -486,7 +480,6 @@
                         history.push(currentIndex);
                         displayCard();
                         updateMemorizedList();
-                        fileModal.classList.add('hidden');
                         initialPage.classList.add('hidden');
                         flashcardSection.classList.remove('hidden');
                         showMessage(`'${fileName}' 단어장을 불러왔습니다.`);
