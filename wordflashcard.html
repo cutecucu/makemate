@@ -307,30 +307,32 @@
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
             let db, auth, userId;
             
-            async function initializeFirebase() {
+            async function initializeApp() {
                 try {
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
                     
+                    if (typeof __initial_auth_token !== 'undefined') {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    
                     onAuthStateChanged(auth, async (user) => {
                         if (user) {
                              userId = user.uid;
-                             await loadSavedFiles();
-                             await restoreLastSession();
-                        } else {
-                            // This part ensures a user is always authenticated
-                            await signInAnonymously(auth);
+                             // 인증이 완료된 후에만 모든 로딩 로직 실행
+                             loadSavedFiles();
+                             restoreLastSession();
                         }
                     });
                 } catch (e) {
                     console.error("Firebase initialization failed:", e);
-                    initialPage.classList.remove('hidden');
-                    flashcardSection.classList.add('hidden');
-                    showMessage("데이터베이스 연결에 실패했습니다. 기록은 저장되지 않습니다.");
+                    showMessage("데이터베이스 연결에 실패했습니다. 단어장 업로드는 가능하지만 기록을 저장되지 않습니다.");
                 }
             }
-            initializeFirebase();
+            initializeApp();
 
 
             // CSV sample file content with BOM
