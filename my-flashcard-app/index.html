@@ -405,22 +405,7 @@
 
                         // Updated parsing logic to handle potential empty lines and format issues
                         words = lines.slice(1).map(line => {
-                            const parts = [];
-                            let inQuote = false;
-                            let currentPart = '';
-                            
-                            for (let i = 0; i < line.length; i++) {
-                                const char = line[i];
-                                if (char === '"') {
-                                    inQuote = !inQuote;
-                                } else if (char === ',' && !inQuote) {
-                                    parts.push(currentPart.trim());
-                                    currentPart = '';
-                                } else {
-                                    currentPart += char;
-                                }
-                            }
-                            parts.push(currentPart.trim());
+                            const parts = line.split(',');
                             
                             // Ensure all 5 required parts are present and the word is not empty
                             if (parts.length >= 5 && parts[0].trim() !== '') {
