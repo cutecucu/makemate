@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body {
             font-family: 'Gowun Dodum', sans-serif;
@@ -397,92 +398,64 @@
                 uploadErrorMessage.classList.add('hidden');
                 showMessage('파일을 처리 중입니다...');
 
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const text = e.target.result;
-                        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-
-                        if (lines.length === 0) {
-                            uploadErrorMessage.textContent = '파일이 비어있습니다. 데이터를 추가해주세요.';
-                            uploadErrorMessage.classList.remove('hidden');
-                            return;
-                        }
-
-                        // Use a more robust CSV parsing logic
-                        const rows = lines.map(line => {
-                            const result = [];
-                            let inQuote = false;
-                            let currentItem = '';
-
-                            for (let i = 0; i < line.length; i++) {
-                                const char = line[i];
-                                if (char === '"' && (i === 0 || line[i-1] === ',')) {
-                                    inQuote = true;
-                                    continue;
-                                }
-                                if (char === '"' && inQuote) {
-                                    inQuote = false;
-                                    continue;
-                                }
-                                if (char === ',' && !inQuote) {
-                                    result.push(currentItem.trim());
-                                    currentItem = '';
-                                    continue;
-                                }
-                                currentItem += char;
+                Papa.parse(file, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        try {
+                            const parsedData = results.data;
+                            if (parsedData.length === 0) {
+                                uploadErrorMessage.textContent = '파일이 비어있습니다. 데이터를 추가해주세요.';
+                                uploadErrorMessage.classList.remove('hidden');
+                                return;
                             }
-                            result.push(currentItem.trim());
-                            return result;
-                        });
-
-                        // Assuming header is the first row
-                        const header = rows[0];
-                        const data = rows.slice(1);
-                        
-                        // Basic validation
-                        if (header.length !== 5 || header[0].trim().toLowerCase() !== '단어') {
-                             uploadErrorMessage.textContent = 'CSV 파일 형식이 올바르지 않습니다. 헤더를 확인해주세요.';
-                             uploadErrorMessage.classList.remove('hidden');
-                             return;
-                        }
-                        
-                        words = data.map(row => {
-                            if (row.length === 5) {
-                                return {
-                                    word: row[0].trim(),
-                                    category: row[1].trim(),
-                                    meaning: row[2].trim(),
-                                    example1: row[3].trim(),
-                                    example2: row[4].trim()
-                                };
+    
+                            const header = parsedData[0].map(h => h.trim().toLowerCase());
+                            const data = parsedData.slice(1);
+    
+                            // Basic header validation
+                            if (header.length !== 5 || header[0] !== '단어') {
+                                uploadErrorMessage.textContent = 'CSV 파일 형식이 올바르지 않습니다. 헤더를 확인해주세요.';
+                                uploadErrorMessage.classList.remove('hidden');
+                                return;
                             }
-                            return null;
-                        }).filter(word => word !== null);
-                        
-                        if (words.length > 0) {
-                            currentFileName = file.name;
-                            memorizedWords.clear();
-                            history = [];
-                            showMessage('단어장 업로드가 완료되었습니다!');
-                            // Enable the start learning button on successful file upload
-                            startLearningButton.disabled = false;
-                            startLearningButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                        } else {
-                            uploadErrorMessage.textContent = '유효한 단어 데이터가 없습니다. CSV 형식을 확인해주세요.';
+                            
+                            words = data.map(row => {
+                                if (row.length === 5) {
+                                    return {
+                                        word: row[0].trim(),
+                                        category: row[1].trim(),
+                                        meaning: row[2].trim(),
+                                        example1: row[3].trim(),
+                                        example2: row[4].trim()
+                                    };
+                                }
+                                return null;
+                            }).filter(word => word !== null);
+                            
+                            if (words.length > 0) {
+                                currentFileName = file.name;
+                                memorizedWords.clear();
+                                history = [];
+                                showMessage('단어장 업로드가 완료되었습니다!');
+                                startLearningButton.disabled = false;
+                                startLearningButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                            } else {
+                                uploadErrorMessage.textContent = '유효한 단어 데이터가 없습니다. CSV 형식을 확인해주세요.';
+                                uploadErrorMessage.classList.remove('hidden');
+                            }
+                        } catch (error) {
+                            uploadErrorMessage.textContent = '파일 처리 중 오류가 발생했습니다. 파일을 다시 확인해주세요.';
                             uploadErrorMessage.classList.remove('hidden');
+                            console.error('File processing error:', error);
                         }
-                    } catch (error) {
-                        uploadErrorMessage.textContent = '파일 처리 중 오류가 발생했습니다. 파일을 다시 확인해주세요.';
+                    },
+                    error: function(err) {
+                        uploadErrorMessage.textContent = `파일 파싱 중 오류가 발생했습니다: ${err.message}`;
                         uploadErrorMessage.classList.remove('hidden');
-                        console.error('File processing error:', error);
+                        console.error('Papa Parse error:', err);
                     }
-                };
-                reader.onerror = () => {
-                    uploadErrorMessage.textContent = '파일을 읽는 도중 오류가 발생했습니다.';
-                    uploadErrorMessage.classList.remove('hidden');
-                };
-                reader.readAsText(file, 'UTF-8');
+                });
             }
 
             // Function to play audio from base64 data
