@@ -9,10 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-    <!-- Firebase SDKs -->
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
     <style>
         body {
             font-family: 'Gowun Dodum', sans-serif;
@@ -160,20 +156,37 @@
     </header>
 
     <main class="flex-grow flex flex-col items-center justify-center p-4">
-        <div id="initial-page" class="flex flex-col items-center w-full max-w-lg mb-8 p-4">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">내 단어장</h2>
-            <div class="bg-gray-100 p-6 rounded-xl shadow-md w-full">
-                <ul id="saved-file-list" class="mt-4 space-y-2 saved-file-list">
-                    <p id="no-files-message" class="text-sm text-gray-500 text-center">저장된 단어장이 없습니다. 파일을 업로드해주세요.</p>
+        <div id="file-upload-section" class="flex flex-col items-center w-full max-w-lg mb-8 p-4">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">단어장 업로드</h2>
+            <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
+                <h3 class="text-lg font-bold mb-2">CSV 파일 형식 안내</h3>
+                <p class="text-left text-sm text-gray-700 mb-4">
+                    파일명이 단어장 이름이 됩니다. <br>
+                    예) `my_words.csv` 파일을 올리면 이름이 `my_words`로 표시
+                </p>
+                <p class="text-left text-sm text-gray-700 mb-4">
+                    파일은 다음 5가지 항목을 이 순서대로 포함해야 합니다.
+                </p>
+                <ul class="text-left text-sm text-gray-800 space-y-2 list-disc list-inside">
+                    <li>단어, 구분, 뜻, 예문1, 예문2</li>
                 </ul>
-                <div class="flex justify-center mt-6">
-                    <button id="open-modal-button" class="bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">단어장 불러오기</button>
-                </div>
+                <a id="download-link" href="#" class="inline-block mt-4 text-orange-500 hover:underline">
+                    샘플 CSV 파일 다운로드
+                </a>
             </div>
+            <div id="drop-zone" class="drop-zone w-full">
+                <p class="text-sm text-gray-700">파일을 여기에 끌어다 놓으세요</p>
+                <p class="my-2 text-gray-500">또는</p>
+                <label for="file-input" class="cursor-pointer bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">
+                    단어장 불러오기
+                </label>
+            </div>
+            <input id="file-input" type="file" accept=".csv" class="hidden">
+            <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
         </div>
 
         <div id="flashcard-section" class="hidden flex flex-col items-center w-full h-full relative">
-            <button id="open-modal-button-2" class="absolute top-2 right-2 z-10 bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-colors duration-200 text-sm">단어장 변경</button>
+            <button id="load-new-file-button" class="absolute top-2 right-2 z-10 bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-colors duration-200 text-sm">단어장 불러오기</button>
             <p id="current-filename-display" class="text-lg text-center font-bold text-gray-800 mb-4"></p>
             <div id="flashcard-container" class="flashcard-container w-11/12 h-[50vh] cursor-pointer">
                 <div class="flashcard" id="flashcard">
@@ -216,56 +229,15 @@
     
     <div id="message-container"></div>
     
-    <!-- File Management Modal -->
-    <div id="file-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="flex justify-end">
-                <button id="close-modal-button" class="text-gray-500 hover:text-gray-700 font-bold text-2xl">×</button>
-            </div>
-            <div id="file-upload-section" class="flex flex-col items-center w-full mb-8">
-                <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
-                    <h2 class="text-lg font-bold mb-2">CSV 파일 형식 안내</h2>
-                    <p class="text-left text-sm text-gray-700 mb-4">
-                        파일명이 단어장 이름이 됩니다.<br>
-                        (예: `my_words.csv` 파일을 올리면 이름이 `my_words`로 표시)
-                    </p>
-                    <p class="text-left text-sm text-gray-700 mb-4">
-                        파일은 다음 5가지 항목을 이 순서대로 포함해야 합니다.
-                    </p>
-                    <ul class="text-left text-sm text-gray-800 space-y-2 list-disc list-inside">
-                        <li>단어, 구분, 뜻, 예문1, 예문2</li>
-                    </ul>
-                    <a id="download-link" href="#" class="inline-block mt-4 text-orange-500 hover:underline">
-                        샘플 CSV 파일 다운로드
-                    </a>
-                </div>
-                
-                <div id="drop-zone" class="drop-zone w-full">
-                    <p class="text-sm text-gray-700">파일을 여기에 끌어다 놓으세요</p>
-                    <p class="my-2 text-gray-500">또는</p>
-                    <label for="file-input" class="cursor-pointer bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">
-                        파일 선택
-                    </label>
-                </div>
-                <input id="file-input" type="file" accept=".csv" class="hidden">
-                <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
-            </div>
-        </div>
-    </div>
-    
     <footer class="mt-auto p-4 text-center text-white bg-[#6b2537]">
         &copy; 2025 makemate : )
     </footer>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, onSnapshot, query, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('file-input');
             const fileNameDisplay = document.getElementById('file-name');
-            const initialPage = document.getElementById('initial-page');
+            const fileUploadSection = document.getElementById('file-upload-section');
             const flashcardSection = document.getElementById('flashcard-section');
             const flashcard = document.getElementById('flashcard');
             const flashcardContainer = document.getElementById('flashcard-container');
@@ -282,15 +254,9 @@
             const memorizedList = document.getElementById('memorized-list');
             const dropZone = document.getElementById('drop-zone');
             const downloadLink = document.getElementById('download-link');
-            const savedFileList = document.getElementById('saved-file-list');
-            const noFilesMessage = document.getElementById('no-files-message');
-            const openModalButton = document.getElementById('open-modal-button');
-            const openModalButton2 = document.getElementById('open-modal-button-2');
-            const closeModalButton = document.getElementById('close-modal-button');
-            const fileModal = document.getElementById('file-modal');
-            const fileUploadSection = document.getElementById('file-upload-section');
-            const currentFilenameDisplay = document.getElementById('current-filename-display');
             const speakButton = document.getElementById('speak-button');
+            const currentFilenameDisplay = document.getElementById('current-filename-display');
+            const loadNewFileButton = document.getElementById('load-new-file-button');
 
             let words = [];
             let currentIndex = 0;
@@ -300,41 +266,7 @@
             const successSynth = new Tone.PolySynth().toDestination();
             const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
             let startX = 0;
-            let currentFileId = null;
-
-            // Firebase setup
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            let db, auth, userId;
             
-            async function initializeApp() {
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    if (typeof __initial_auth_token !== 'undefined') {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                             userId = user.uid;
-                             // 인증이 완료된 후에만 모든 로딩 로직 실행
-                             loadSavedFiles();
-                             restoreLastSession();
-                        }
-                    });
-                } catch (e) {
-                    console.error("Firebase initialization failed:", e);
-                    showMessage("데이터베이스 연결에 실패했습니다. 단어장 업로드는 가능하지만 기록을 저장되지 않습니다.");
-                }
-            }
-            initializeApp();
-
-
             // CSV sample file content with BOM
             const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
             const sampleCSVBlob = new Blob([sampleCSV], { type: 'text/csv;charset=utf-8;' });
@@ -408,7 +340,7 @@
             }
 
             // Function to display the flashcard content
-            function displayCard() {
+            function displayCard(fileName) {
                 if (words.length === 0) {
                     showMessage('파일에 단어가 없습니다.');
                     return;
@@ -424,17 +356,20 @@
                 
                 flashcard.classList.remove('flipped');
                 updateWordCounts();
+
+                const baseName = fileName.replace('.csv', '');
+                currentFilenameDisplay.textContent = baseName;
             }
 
             // Function to handle file processing
-            async function processFile(file) {
+            function processFile(file) {
                 if (!file) return;
                 
                 fileNameDisplay.textContent = `파일: ${file.name}`;
                 showMessage('파일을 처리 중입니다...');
 
                 const reader = new FileReader();
-                reader.onload = async (e) => {
+                reader.onload = (e) => {
                     const text = e.target.result;
                     const lines = text.split('\n').filter(line => line.trim() !== '');
                     words = lines.map(line => {
@@ -447,17 +382,17 @@
                     });
                     
                     if (words.length > 0) {
-                        if (userId) {
-                            const newDocRef = await addDoc(collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`), {
-                                name: file.name,
-                                wordsJson: JSON.stringify(words),
-                                memorizedWords: [],
-                                timestamp: Date.now()
-                            });
-                            loadData({ wordsJson: JSON.stringify(words), memorizedWords: [] }, file.name, newDocRef.id);
-                            fileModal.classList.add('hidden');
-                        } else {
-                            showMessage("사용자 인증 정보가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.");
+                        memorizedWords.clear();
+                        history = [];
+                        const firstIndex = getRandomUnmemorizedWord();
+                        if (firstIndex !== null) {
+                            currentIndex = firstIndex;
+                            history.push(currentIndex);
+                            displayCard(file.name);
+                            updateMemorizedList();
+                            fileUploadSection.classList.add('hidden');
+                            flashcardSection.classList.remove('hidden');
+                            showMessage(`'${file.name}' 단어장을 불러왔습니다.`);
                         }
                     } else {
                         showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
@@ -467,111 +402,6 @@
                     showMessage('파일을 읽는 도중 오류가 발생했습니다.');
                 };
                 reader.readAsText(file, 'UTF-8');
-            }
-
-            // New function to handle displaying loaded data
-            function loadData(data, fileName, fileId) {
-                currentFileId = fileId;
-                try {
-                    words = JSON.parse(data.wordsJson);
-                    memorizedWords = new Set(data.memorizedWords || []);
-                    history = [];
-                    const firstIndex = getRandomUnmemorizedWord();
-                    if (firstIndex !== null) {
-                        currentIndex = firstIndex;
-                        history.push(currentIndex);
-                        displayCard();
-                        updateMemorizedList();
-                        initialPage.classList.add('hidden');
-                        flashcardSection.classList.remove('hidden');
-                        showMessage(`'${fileName}' 단어장을 불러왔습니다.`);
-                        const baseName = fileName.replace('.csv', '');
-                        currentFilenameDisplay.textContent = baseName;
-                        if (userId) {
-                            saveLastUsedFile(fileId);
-                        }
-                    }
-                } catch (e) {
-                    console.error("Failed to parse JSON:", e);
-                    showMessage("단어장 데이터를 불러오는 데 실패했습니다.");
-                }
-            }
-
-            // Function to load file content from Firestore
-            async function loadFileContent(fileId, fileName) {
-                if (!userId) {
-                    showMessage('데이터베이스를 불러오는 중입니다...');
-                    return;
-                }
-                showMessage(`'${fileName}' 단어장을 불러오는 중...`);
-                const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, fileId);
-                const fileSnap = await getDoc(fileRef);
-
-                if (fileSnap.exists()) {
-                    loadData(fileSnap.data(), fileName, fileId);
-                } else {
-                    showMessage('파일을 찾을 수 없습니다.');
-                }
-            }
-
-            // Function to load saved files from Firestore and display them
-            async function loadSavedFiles() {
-                if (!userId) {
-                    return;
-                }
-                const filesCollection = collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`);
-                onSnapshot(filesCollection, (querySnapshot) => {
-                    savedFileList.innerHTML = '';
-                    if (!querySnapshot.empty) {
-                        noFilesMessage.classList.add('hidden');
-                        querySnapshot.forEach((doc) => {
-                            const fileData = doc.data();
-                            const li = document.createElement('li');
-                            li.className = 'cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200 py-2 px-4 rounded-lg bg-gray-200 hover:bg-gray-300';
-                            li.textContent = `${fileData.name} (${new Date(fileData.timestamp).toLocaleDateString()})`;
-                            li.dataset.fileId = doc.id;
-                            li.addEventListener('click', () => {
-                                loadFileContent(li.dataset.fileId, fileData.name);
-                            });
-                            savedFileList.appendChild(li);
-                        });
-                    } else {
-                         noFilesMessage.classList.remove('hidden');
-                    }
-                });
-            }
-
-            // Function to save the ID of the last used file
-            async function saveLastUsedFile(fileId) {
-                if (userId) {
-                    const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'user_preferences');
-                    try {
-                        await setDoc(settingsRef, { lastUsedFileId: fileId }, { merge: true });
-                    } catch (e) {
-                        console.error("Failed to save last used file ID:", e);
-                    }
-                }
-            }
-
-            // Function to restore the last session
-            async function restoreLastSession() {
-                if (!userId) {
-                    return;
-                }
-                const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'user_preferences');
-                const settingsSnap = await getDoc(settingsRef);
-
-                if (settingsSnap.exists()) {
-                    const data = settingsSnap.data();
-                    if (data.lastUsedFileId) {
-                        const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, data.lastUsedFileId);
-                        const fileSnap = await getDoc(fileRef);
-                        if (fileSnap.exists()) {
-                            const fileName = fileSnap.data().name;
-                            loadData(fileSnap.data(), fileName, fileSnap.id);
-                        }
-                    }
-                }
             }
 
             // Function to play audio from base64 data
@@ -705,7 +535,8 @@
                         if (history.length > 1) {
                             history.pop();
                             currentIndex = history[history.length - 1];
-                            displayCard();
+                            // `displayCard`에 현재 파일명을 직접 전달
+                            displayCard(currentFilenameDisplay.textContent + '.csv');
                         } else {
                             showMessage('더 이상 이전 단어가 없습니다.');
                         }
@@ -715,7 +546,8 @@
                         if (nextIndex !== null) {
                             currentIndex = nextIndex;
                             history.push(currentIndex);
-                            displayCard();
+                            // `displayCard`에 현재 파일명을 직접 전달
+                            displayCard(currentFilenameDisplay.textContent + '.csv');
                         }
                     }
                 }
@@ -751,20 +583,14 @@
                         showMessage(`'${currentWord}'를 외웠습니다!`);
                         updateWordCounts();
                         updateMemorizedList();
-
-                        if (userId && currentFileId) {
-                            const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, currentFileId);
-                            await updateDoc(fileRef, {
-                                memorizedWords: Array.from(memorizedWords)
-                            });
-                        }
                     }
                     
                     const nextIndex = getRandomUnmemorizedWord();
                     if (nextIndex !== null) {
                         currentIndex = nextIndex;
                         history.push(currentIndex);
-                        displayCard();
+                        // `displayCard`에 현재 파일명을 직접 전달
+                        displayCard(currentFilenameDisplay.textContent + '.csv');
                     } else {
                         showMessage('모든 단어를 다 외우셨어요! 초기화하려면 버튼을 눌러주세요.');
                     }
@@ -772,7 +598,7 @@
             });
 
             // Reset memorized words
-            resetButton.addEventListener('click', async (event) => {
+            resetButton.addEventListener('click', (event) => {
                 event.stopPropagation();
                 playButtonClickSound();
                 memorizedWords.clear();
@@ -781,16 +607,10 @@
                 if (firstIndex !== null) {
                     currentIndex = firstIndex;
                     history.push(currentIndex);
-                    displayCard();
+                    // `displayCard`에 현재 파일명을 직접 전달
+                    displayCard(currentFilenameDisplay.textContent + '.csv');
                     updateMemorizedList();
                     showMessage('암기 상태가 초기화되었습니다!');
-                }
-
-                if (userId && currentFileId) {
-                    const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, currentFileId);
-                    await updateDoc(fileRef, {
-                        memorizedWords: []
-                    });
                 }
             });
 
@@ -854,15 +674,10 @@
                 }
             });
 
-            // Modal event listeners
-            openModalButton.addEventListener('click', () => {
-                fileModal.classList.remove('hidden');
-            });
-            openModalButton2.addEventListener('click', () => {
-                fileModal.classList.remove('hidden');
-            });
-            closeModalButton.addEventListener('click', () => {
-                fileModal.classList.add('hidden');
+            // Event listener for the new button
+            loadNewFileButton.addEventListener('click', () => {
+                flashcardSection.classList.add('hidden');
+                fileUploadSection.classList.remove('hidden');
             });
         });
     </script>
