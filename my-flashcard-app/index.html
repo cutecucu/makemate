@@ -403,10 +403,12 @@
                         const text = e.target.result;
                         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
 
+                        // Updated parsing logic to handle potential empty lines and format issues
                         words = lines.slice(1).map(line => {
                             const parts = [];
-                            let currentPart = '';
                             let inQuote = false;
+                            let currentPart = '';
+                            
                             for (let i = 0; i < line.length; i++) {
                                 const char = line[i];
                                 if (char === '"') {
@@ -420,7 +422,8 @@
                             }
                             parts.push(currentPart.trim());
                             
-                            if (parts.length >= 5 && parts[0] && parts[0].trim() !== '') {
+                            // Ensure all 5 required parts are present and the word is not empty
+                            if (parts.length >= 5 && parts[0].trim() !== '') {
                                 const [word, category, meaning, example1, example2] = parts;
                                 return {
                                     word: word.trim(),
@@ -442,7 +445,7 @@
                             uploadSuccessSection.classList.remove('hidden');
                             showMessage('단어장 업로드가 완료되었습니다!');
                         } else {
-                            uploadErrorMessage.textContent = '유효한 데이터가 없습니다. CSV 형식을 확인해주세요.';
+                            uploadErrorMessage.textContent = '유효한 데이터가 없습니다. CSV 형식을 확인해주세요. (헤더 포함 최소 2줄)';
                             uploadErrorMessage.classList.remove('hidden');
                         }
                     } catch (error) {
