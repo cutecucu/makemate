@@ -402,21 +402,53 @@
                     try {
                         const text = e.target.result;
                         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-                        
-                        const parsedData = Papa.parse(text, {
-                            header: false,
-                            skipEmptyLines: true,
-                            trimHeaders: true,
-                            dynamicTyping: false
-                        }).data;
-                        
-                        // Check if the first line is a valid header
-                        if (parsedData.length > 0 && parsedData[0][0].toLowerCase() === '단어') {
-                            parsedData.shift(); // Remove header row
+
+                        if (lines.length === 0) {
+                            uploadErrorMessage.textContent = '파일이 비어있습니다. 데이터를 추가해주세요.';
+                            uploadErrorMessage.classList.remove('hidden');
+                            return;
                         }
 
-                        words = parsedData.map(row => {
-                            if (row.length >= 5 && row[0].trim() !== '') {
+                        // Use a more robust CSV parsing logic
+                        const rows = lines.map(line => {
+                            const result = [];
+                            let inQuote = false;
+                            let currentItem = '';
+
+                            for (let i = 0; i < line.length; i++) {
+                                const char = line[i];
+                                if (char === '"' && (i === 0 || line[i-1] === ',')) {
+                                    inQuote = true;
+                                    continue;
+                                }
+                                if (char === '"' && inQuote) {
+                                    inQuote = false;
+                                    continue;
+                                }
+                                if (char === ',' && !inQuote) {
+                                    result.push(currentItem.trim());
+                                    currentItem = '';
+                                    continue;
+                                }
+                                currentItem += char;
+                            }
+                            result.push(currentItem.trim());
+                            return result;
+                        });
+
+                        // Assuming header is the first row
+                        const header = rows[0];
+                        const data = rows.slice(1);
+                        
+                        // Basic validation
+                        if (header.length !== 5 || header[0].trim().toLowerCase() !== '단어') {
+                             uploadErrorMessage.textContent = 'CSV 파일 형식이 올바르지 않습니다. 헤더를 확인해주세요.';
+                             uploadErrorMessage.classList.remove('hidden');
+                             return;
+                        }
+                        
+                        words = data.map(row => {
+                            if (row.length === 5) {
                                 return {
                                     word: row[0].trim(),
                                     category: row[1].trim(),
@@ -437,7 +469,7 @@
                             startLearningButton.disabled = false;
                             startLearningButton.classList.remove('opacity-50', 'cursor-not-allowed');
                         } else {
-                            uploadErrorMessage.textContent = '유효한 데이터가 없습니다. CSV 형식을 확인해주세요. (헤더 포함 최소 2줄)';
+                            uploadErrorMessage.textContent = '유효한 단어 데이터가 없습니다. CSV 형식을 확인해주세요.';
                             uploadErrorMessage.classList.remove('hidden');
                         }
                     } catch (error) {
