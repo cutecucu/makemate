@@ -404,8 +404,24 @@
                         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
 
                         // Updated parsing logic to handle potential empty lines and format issues
+                        // Changed parsing to correctly handle commas inside quoted strings.
                         words = lines.slice(1).map(line => {
-                            const parts = line.split(',');
+                            const parts = [];
+                            let inQuote = false;
+                            let currentPart = '';
+                            
+                            for (let i = 0; i < line.length; i++) {
+                                const char = line[i];
+                                if (char === '"') {
+                                    inQuote = !inQuote;
+                                } else if (char === ',' && !inQuote) {
+                                    parts.push(currentPart.trim());
+                                    currentPart = '';
+                                } else {
+                                    currentPart += char;
+                                }
+                            }
+                            parts.push(currentPart.trim());
                             
                             // Ensure all 5 required parts are present and the word is not empty
                             if (parts.length >= 5 && parts[0].trim() !== '') {
