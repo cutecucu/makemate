@@ -225,13 +225,14 @@
             <div id="file-upload-section" class="flex flex-col items-center w-full mb-8">
                 <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
                     <h2 class="text-lg font-bold mb-2">CSV 파일 형식 안내</h2>
-                    <p class="text-sm text-gray-700 mb-4">
-                        파일명(.csv 제외)이 단어장 이름으로 표시됩니다.<br>(예: `my_words.csv` 파일을 올리면 이름이 `my_words`로 표시)
+                    <p class="text-left text-sm text-gray-700 mb-4">
+                        파일명이 단어장 이름이 됩니다.<br>
+                        (예: `my_words.csv` 파일을 올리면 이름이 `my_words`로 표시)
                     </p>
-                    <p class="text-sm text-gray-700 mb-4">
-                        파일은 다음 항목들을 이 순서대로 포함해야 합니다.
+                    <p class="text-left text-sm text-gray-700 mb-4">
+                        파일은 다음 5가지 항목을 이 순서대로 포함해야 합니다.
                     </p>
-                    <ul class="text-left text-sm text-gray-800 space-y-2">
+                    <ul class="text-left text-sm text-gray-800 space-y-2 list-disc list-inside">
                         <li>단어, 구분, 뜻, 예문1, 예문2</li>
                     </ul>
                     <a id="download-link" href="#" class="inline-block mt-4 text-orange-500 hover:underline">
@@ -463,23 +464,7 @@
                                 memorizedWords: [],
                                 timestamp: Date.now()
                             });
-                            await saveLastUsedFile(newDocRef.id);
-                        }
-
-                        memorizedWords.clear();
-                        history = [];
-                        const firstIndex = getRandomUnmemorizedWord();
-                        if (firstIndex !== null) {
-                            currentIndex = firstIndex;
-                            history.push(currentIndex);
-                            displayCard();
-                            updateMemorizedList();
-                            fileModal.classList.add('hidden');
-                            initialPage.classList.add('hidden');
-                            flashcardSection.classList.remove('hidden');
-
-                            const baseName = file.name.replace('.csv', '');
-                            currentFilenameDisplay.textContent = baseName;
+                            loadData({ wordsJson: JSON.stringify(words), memorizedWords: [] }, file.name, newDocRef.id);
                         }
                     } else {
                         showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
@@ -491,6 +476,33 @@
                 reader.readAsText(file, 'UTF-8');
             }
 
+            // New function to handle displaying loaded data
+            function loadData(data, fileName, fileId) {
+                currentFileId = fileId;
+                try {
+                    words = JSON.parse(data.wordsJson);
+                    memorizedWords = new Set(data.memorizedWords || []);
+                    history = [];
+                    const firstIndex = getRandomUnmemorizedWord();
+                    if (firstIndex !== null) {
+                        currentIndex = firstIndex;
+                        history.push(currentIndex);
+                        displayCard();
+                        updateMemorizedList();
+                        fileModal.classList.add('hidden');
+                        initialPage.classList.add('hidden');
+                        flashcardSection.classList.remove('hidden');
+                        showMessage(`'${fileName}' 단어장을 불러왔습니다.`);
+                        const baseName = fileName.replace('.csv', '');
+                        currentFilenameDisplay.textContent = baseName;
+                        saveLastUsedFile(fileId);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse JSON:", e);
+                    showMessage("단어장 데이터를 불러오는 데 실패했습니다.");
+                }
+            }
+
             // Function to load file content from Firestore
             async function loadFileContent(fileId, fileName) {
                 if (!dbInitialized || !userId) {
@@ -498,38 +510,14 @@
                     return;
                 }
                 showMessage(`'${fileName}' 단어장을 불러오는 중...`);
-                const q = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, fileId);
-                onSnapshot(q, (docSnapshot) => {
-                    if (docSnapshot.exists()) {
-                        const data = docSnapshot.data();
-                        currentFileId = docSnapshot.id;
-                        try {
-                            words = JSON.parse(data.wordsJson);
-                            memorizedWords = new Set(data.memorizedWords || []);
-                            history = [];
-                            const firstIndex = getRandomUnmemorizedWord();
-                            if (firstIndex !== null) {
-                                currentIndex = firstIndex;
-                                history.push(currentIndex);
-                                displayCard();
-                                updateMemorizedList();
-                                fileModal.classList.add('hidden');
-                                initialPage.classList.add('hidden');
-                                flashcardSection.classList.remove('hidden');
-                                showMessage(`'${fileName}' 단어장을 불러왔습니다.`);
-                                const baseName = fileName.replace('.csv', '');
-                                currentFilenameDisplay.textContent = baseName;
+                const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, fileId);
+                const fileSnap = await getDoc(fileRef);
 
-                                saveLastUsedFile(fileId);
-                            }
-                        } catch (e) {
-                            console.error("Failed to parse JSON:", e);
-                            showMessage("단어장 데이터를 불러오는 데 실패했습니다.");
-                        }
-                    } else {
-                        showMessage('파일을 찾을 수 없습니다.');
-                    }
-                });
+                if (fileSnap.exists()) {
+                    loadData(fileSnap.data(), fileName, fileId);
+                } else {
+                    showMessage('파일을 찾을 수 없습니다.');
+                }
             }
 
             // Function to load saved files from Firestore and display them
@@ -586,7 +574,7 @@
                         const fileSnap = await getDoc(fileRef);
                         if (fileSnap.exists()) {
                             const fileName = fileSnap.data().name;
-                            loadFileContent(data.lastUsedFileId, fileName);
+                            loadData(fileSnap.data(), fileName, fileSnap.id);
                         }
                     }
                 }
