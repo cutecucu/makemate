@@ -43,7 +43,7 @@ export default async function handler(req) {
 
         if (audioData && mimeType) {
             const match = mimeType.match(/rate=(\d+)/);
-            const sampleRate = match ? parseInt(match[1], 10) : 24000; // Defaulting to 24000 if not found
+            const sampleRate = match ? parseInt(match[1], 10) : 24000;
 
             return new NextResponse(JSON.stringify({ audioData, sampleRate }), {
                 status: 200,
