@@ -9,6 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
     <style>
         body {
             font-family: 'Gowun Dodum', sans-serif;
@@ -119,6 +123,10 @@
         .highlight {
             color: #D67B2A;
         }
+        .saved-file-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -159,6 +167,15 @@
             </div>
             <input id="file-input" type="file" accept=".csv" class="hidden">
             <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
+
+            <details id="saved-files-details" class="mt-8 w-full p-4 bg-gray-100 rounded-xl shadow-md hidden">
+                <summary class="text-lg font-bold text-gray-800 cursor-pointer">
+                    저장된 단어장
+                </summary>
+                <ul id="saved-file-list" class="mt-4 space-y-2 saved-file-list">
+                    <!-- Saved files will be dynamically loaded here -->
+                </ul>
+            </details>
         </div>
 
         <div id="flashcard-section" class="hidden flex flex-col items-center w-full h-full">
@@ -202,7 +219,11 @@
         &copy; 2025 makemate : )
     </footer>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('file-input');
             const fileNameDisplay = document.getElementById('file-name');
@@ -223,7 +244,9 @@
             const memorizedList = document.getElementById('memorized-list');
             const dropZone = document.getElementById('drop-zone');
             const downloadLink = document.getElementById('download-link');
-
+            const savedFilesDetails = document.getElementById('saved-files-details');
+            const savedFileList = document.getElementById('saved-file-list');
+            
             let words = [];
             let currentIndex = 0;
             let history = [];
@@ -232,6 +255,27 @@
             const successSynth = new Tone.PolySynth().toDestination();
             const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
             let startX = 0;
+            
+            // Firebase setup
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+            let userId = null;
+            let dbInitialized = false;
+
+            // Wait for authentication state to be ready
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else {
+                    const anonymousUser = await signInAnonymously(auth);
+                    userId = anonymousUser.user.uid;
+                }
+                dbInitialized = true;
+                await loadSavedFiles();
+            });
 
             // CSV sample file content with BOM
             const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
@@ -323,169 +367,43 @@
                 flashcard.classList.remove('flipped');
                 updateWordCounts();
             }
-
-            // Function to handle file processing
-            function processFile(file) {
-                if (!file) return;
-                
-                fileNameDisplay.textContent = `파일: ${file.name}`;
-                const reader = new FileReader();
-
-                reader.onload = (e) => {
-                    const text = e.target.result;
-                    const lines = text.split('\n').filter(line => line.trim() !== '');
-                    words = lines.map(line => {
-                        const [word, category, meaning, example1, example2] = line.split(',');
-                        return { word: word.trim(), category: category.trim(), meaning: meaning.trim(), example1: example1.trim(), example2: example2.trim() };
-                    });
-
-                    if (words.length > 0) {
-                        memorizedWords.clear();
-                        history = [];
-                        const firstIndex = getRandomUnmemorizedWord();
-                        if (firstIndex !== null) {
-                            currentIndex = firstIndex;
-                            history.push(currentIndex);
-                            displayCard();
-                            updateMemorizedList();
-                            fileUploadSection.classList.add('hidden');
-                            flashcardSection.classList.remove('hidden');
-                            showMessage('파일이 성공적으로 업로드되었습니다!');
-                        }
-                    } else {
-                        showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
-                    }
-                };
-                reader.onerror = () => {
-                    showMessage('파일을 읽는 도중 오류가 발생했습니다.');
-                };
-                reader.readAsText(file, 'UTF-8');
-            }
-
-            // Event listener for file input
-            fileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                processFile(file);
-            });
-
-            // Event listeners for drag and drop
-            dropZone.addEventListener('dragover', (event) => {
-                event.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('dragover');
-            });
-
-            dropZone.addEventListener('drop', (event) => {
-                event.preventDefault();
-                dropZone.classList.remove('dragover');
-                const file = event.dataTransfer.files[0];
-                if (file && file.type === 'text/csv') {
-                    processFile(file);
-                } else {
-                    showMessage('유효한 CSV 파일을 드롭하세요.');
-                }
-            });
-
-            // Handle card swiping
-            flashcardContainer.addEventListener('mousedown', (event) => {
-                startX = event.pageX;
-            });
-            flashcardContainer.addEventListener('mouseup', (event) => {
-                const endX = event.pageX;
-                handleSwipe(startX, endX);
-            });
-            flashcardContainer.addEventListener('touchstart', (event) => {
-                startX = event.touches[0].pageX;
-            });
-            flashcardContainer.addEventListener('touchend', (event) => {
-                const endX = event.changedTouches[0].pageX;
-                handleSwipe(startX, endX);
-            });
-
-            function handleSwipe(start, end) {
-                const deltaX = end - start;
-                const swipeThreshold = 50;
-
-                if (Math.abs(deltaX) > swipeThreshold) {
-                    clickSynth.triggerAttackRelease("C4", "8n");
-                    if (deltaX > 0) {
-                        // Swipe right for previous card
-                        if (history.length > 1) {
-                            history.pop();
-                            currentIndex = history[history.length - 1];
-                            displayCard();
-                        } else {
-                            showMessage('더 이상 이전 단어가 없습니다.');
-                        }
-                    } else {
-                        // Swipe left for next card
-                        const nextIndex = getRandomUnmemorizedWord();
-                        if (nextIndex !== null) {
-                            currentIndex = nextIndex;
-                            history.push(currentIndex);
-                            displayCard();
-                        }
-                    }
-                }
-            }
-
-            // Flip flashcard on click
-            flashcardContainer.addEventListener('click', (event) => {
-                 // Check if the click is on the card itself, not the container
-                if (event.target.closest('#flashcard')) {
-                    flashcard.classList.toggle('flipped');
-                }
-            });
-
-            // Play click sound on button press
-            function playButtonClickSound() {
-                clickSynth.triggerAttackRelease("C4", "8n");
-            }
-
-            // Play success sound on memorized button press
-            function playSuccessSound() {
-                successSynth.triggerAttackRelease(["C4", "E4", "G4"], "4n");
-            }
             
-            // Mark a word as memorized
-            memorizedButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                if (words.length > 0) {
-                    memorizedWords.add(words[currentIndex].word);
-                    playSuccessSound();
-                    createConfetti();
-                    showMessage(`'${words[currentIndex].word}'를 외웠습니다!`);
-                    updateWordCounts();
-                    updateMemorizedList();
-                    // Move to the next card
-                    const nextIndex = getRandomUnmemorizedWord();
-                    if (nextIndex !== null) {
-                        currentIndex = nextIndex;
+            // Function to load file content from Firestore
+            async function loadFileContent(fileId) {
+                if (!dbInitialized) {
+                    showMessage('데이터베이스를 불러오는 중입니다...');
+                    return;
+                }
+                showMessage('단어장을 불러오는 중...');
+                const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, fileId);
+                const fileSnap = await getDoc(fileRef);
+                if (fileSnap.exists()) {
+                    const data = fileSnap.data();
+                    const parsedWords = JSON.parse(data.wordsJson);
+                    words = parsedWords;
+                    memorizedWords.clear();
+                    history = [];
+                    const firstIndex = getRandomUnmemorizedWord();
+                    if (firstIndex !== null) {
+                        currentIndex = firstIndex;
                         history.push(currentIndex);
                         displayCard();
+                        updateMemorizedList();
+                        fileUploadSection.classList.add('hidden');
+                        flashcardSection.classList.remove('hidden');
+                        showMessage(`'${data.name}' 단어장을 불러왔습니다.`);
                     }
+                } else {
+                    showMessage('파일을 찾을 수 없습니다.');
                 }
-            });
+            }
 
-            // Reset memorized words
-            resetButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                playButtonClickSound();
-                memorizedWords.clear();
-                history = [];
-                const firstIndex = getRandomUnmemorizedWord();
-                if (firstIndex !== null) {
-                    currentIndex = firstIndex;
-                    history.push(currentIndex);
-                    displayCard();
-                    updateMemorizedList();
-                    showMessage('암기 상태가 초기화되었습니다!');
+            // Function to load saved files from Firestore and display them
+            async function loadSavedFiles() {
+                if (!dbInitialized) {
+                    return;
                 }
-            });
-        });
-    </script>
-</body>
-</html>
+                const q = collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`);
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty
