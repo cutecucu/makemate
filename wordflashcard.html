@@ -306,31 +306,33 @@
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
             let db, auth, userId;
-
-            // Wait for authentication state to be ready
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
+            
+            async function initializeFirebaseAndLoadData() {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    let userCredential;
+                    if (typeof __initial_auth_token !== 'undefined') {
+                        userCredential = await signInWithCustomToken(auth, __initial_auth_token);
                     } else {
-                        const anonymousUser = await signInAnonymously(auth);
-                        userId = anonymousUser.user.uid;
+                        userCredential = await signInAnonymously(auth);
                     }
+                    
+                    userId = userCredential.user.uid;
                     await loadSavedFiles();
                     await restoreLastSession();
-                });
-                
-            } catch (e) {
-                console.error("Firebase initialization failed:", e);
-                // Fallback to a non-database version if Firebase fails
-                initialPage.classList.add('hidden');
-                flashcardSection.classList.remove('hidden');
-                showMessage("데이터베이스 연결에 실패했습니다. 단어장 업로드는 가능하지만, 기록은 저장되지 않습니다.");
+
+                } catch (e) {
+                    console.error("Firebase initialization failed:", e);
+                    initialPage.classList.add('hidden');
+                    flashcardSection.classList.remove('hidden');
+                    showMessage("데이터베이스 연결에 실패했습니다. 단어장 업로드는 가능하지만, 기록은 저장되지 않습니다.");
+                }
             }
+
+            initializeFirebaseAndLoadData();
 
             // CSV sample file content with BOM
             const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
