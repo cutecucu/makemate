@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단어 암기 플래시 카드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+            background-color: #FDF9ED;
+        }
+        .flashcard-front, .flashcard-back {
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+        }
+        .flashcard-back {
+            transform: rotateY(180deg);
+        }
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+        .word-text {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        .category-text {
+            font-size: 1.5rem;
+            font-weight: 400;
+            text-align: center;
+        }
+        .meaning-text {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .example-text {
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1rem;
+            background-color: #212121;
+            color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+            animation: confetti-fall 2s ease-out forwards;
+        }
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(500px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        .drop-zone {
+            border: 2px dashed #999;
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .arrow-icon {
+            color: #4A433A;
+            opacity: 0.5;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        .arrow-icon:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <header class="flex justify-between items-center text-white p-0">
+        <div class="py-4 pl-4 pr-12 rounded-br-3xl bg-[#4A433A] w-fit">
+            <h1 class="text-3xl font-bold whitespace-nowrap">📚 단어 암기 플래시 카드</h1>
+        </div>
+        <div class="w-12 h-12 rounded-lg mr-4 overflow-hidden">
+            <img src="https://placehold.co/48x48/FFEB99/000000?text=🧠" alt="로고" class="w-full h-full object-cover">
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-center p-4">
+        <div id="file-upload-section" class="flex flex-col items-center w-full max-w-lg mb-8">
+            <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
+                <h2 class="text-lg font-bold mb-2">CSV 파일 형식 안내</h2>
+                <p class="text-sm text-gray-700 mb-4">
+                    플래시카드는 아래 순서대로 작성된 CSV 파일을 사용합니다.
+                </p>
+                <ul class="text-left text-sm text-gray-800 space-y-2">
+                    <li>단어: 외울 단어 (예: Apple)</li>
+                    <li>구분: 단어의 종류 (예: 명사)</li>
+                    <li>뜻: 단어의 의미 (예: 사과)</li>
+                    <li>예문1: 단어가 사용된 첫 번째 문장 (예: I love to eat apples.)</li>
+                    <li>예문2: 단어가 사용된 두 번째 문장 (예: An apple a day keeps the doctor away.)</li>
+                </ul>
+                <a id="download-link" href="#" class="inline-block mt-4 text-orange-500 hover:underline">
+                    샘플 CSV 파일 다운로드
+                </a>
+            </div>
+            
+            <div id="drop-zone" class="drop-zone w-full">
+                <p class="text-sm text-gray-700">파일을 여기에 끌어다 놓으세요</p>
+                <p class="my-2 text-gray-500">또는</p>
+                <label for="file-input" class="cursor-pointer bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">
+                    파일 선택
+                </label>
+            </div>
+            <input id="file-input" type="file" accept=".csv" class="hidden">
+            <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
+        </div>
+
+        <div id="flashcard-section" class="hidden flex flex-col items-center w-full h-full" style="max-width: 500px; height: 50vh;">
+            <div class="flex items-center justify-center gap-4 w-full h-full">
+                <svg id="prev-arrow" class="arrow-icon w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                <div id="flashcard-container" class="flashcard-container w-full h-full cursor-pointer">
+                    <div class="flashcard" id="flashcard">
+                        <div class="flashcard-front bg-white flex flex-col justify-center items-center p-6 text-gray-800">
+                            <p id="word-display" class="word-text"></p>
+                            <p id="category-display" class="category-text text-gray-600"></p>
+                        </div>
+                        <div class="flashcard-back bg-[#4A433A] text-white flex flex-col justify-center items-center p-6">
+                            <p id="meaning-display" class="meaning-text"></p>
+                            <p id="example1-display" class="example-text mt-4 text-gray-300"></p>
+                            <p id="example2-display" class="example-text mt-2 text-gray-300"></p>
+                        </div>
+                    </div>
+                </div>
+                <svg id="next-arrow" class="arrow-icon w-12 h-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+            </div>
+            
+            <div class="text-center mt-4 text-gray-600 font-bold">
+                <span id="memorized-count"></span> / <span id="total-words"></span>
+            </div>
+
+            <div class="flex justify-center mt-8">
+                <button id="memorized-button" class="bg-[#6B8E23] hover:bg-[#526D1E] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">암기 완료 🎉</button>
+            </div>
+            
+            <details class="mt-8 w-full max-w-lg p-4 bg-gray-100 rounded-xl shadow-md">
+                <summary class="text-lg font-bold text-gray-800 cursor-pointer">암기한 단어 보기</summary>
+                <div class="flex justify-between items-center my-4">
+                    <h3 class="text-md font-bold">내 암기 단어장</h3>
+                    <button id="reset-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-xl shadow-lg transition-colors duration-200 text-sm">암기 초기화 🔄</button>
+                </div>
+                <ul id="memorized-list" class="mt-2 space-y-2 list-disc list-inside">
+                    <p class="text-sm text-gray-500">암기한 단어가 여기에 표시됩니다.</p>
+                </ul>
+            </details>
+        </div>
+    </main>
+    
+    <div id="message-container"></div>
+    
+    <footer class="mt-auto p-4 text-center text-white bg-[#4A433A]">
+        &copy; 2025 makemate : )
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('file-input');
+            const fileNameDisplay = document.getElementById('file-name');
+            const fileUploadSection = document.getElementById('file-upload-section');
+            const flashcardSection = document.getElementById('flashcard-section');
+            const flashcard = document.getElementById('flashcard');
+            const flashcardContainer = document.getElementById('flashcard-container');
+            const wordDisplay = document.getElementById('word-display');
+            const categoryDisplay = document.getElementById('category-display');
+            const meaningDisplay = document.getElementById('meaning-display');
+            const example1Display = document.getElementById('example1-display');
+            const example2Display = document.getElementById('example2-display');
+            const memorizedButton = document.getElementById('memorized-button');
+            const resetButton = document.getElementById('reset-button');
+            const messageContainer = document.getElementById('message-container');
+            const totalWordsDisplay = document.getElementById('total-words');
+            const memorizedCountDisplay = document.getElementById('memorized-count');
+            const memorizedList = document.getElementById('memorized-list');
+            const dropZone = document.getElementById('drop-zone');
+            const downloadLink = document.getElementById('download-link');
+            const prevArrow = document.getElementById('prev-arrow');
+            const nextArrow = document.getElementById('next-arrow');
+
+            let words = [];
+            let currentIndex = 0;
+            let history = [];
+            let memorizedWords = new Set();
+            const clickSynth = new Tone.Synth().toDestination();
+            const successSynth = new Tone.PolySynth().toDestination();
+            const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
+
+            // CSV sample file content with BOM
+            const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
+            const sampleCSVBlob = new Blob([sampleCSV], { type: 'text/csv;charset=utf-8;' });
+            downloadLink.href = URL.createObjectURL(sampleCSVBlob);
+            downloadLink.download = 'sample_flashcards.csv';
+
+            // Helper function to show a custom message
+            function showMessage(text) {
+                const messageBox = document.createElement('div');
+                messageBox.className = 'message-box';
+                messageBox.textContent = text;
+                messageContainer.appendChild(messageBox);
+                setTimeout(() => {
+                    messageBox.remove();
+                }, 2000);
+            }
+
+            // Function to generate confetti effect
+            function createConfetti() {
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = `${Math.random() * 100}vw`;
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = `${Math.random() * 0.5}s`;
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 2000);
+                }
+            }
+            
+            // Update counts
+            function updateWordCounts() {
+                memorizedCountDisplay.textContent = memorizedWords.size;
+                totalWordsDisplay.textContent = words.length;
+            }
+            
+            // Update the list of memorized words
+            function updateMemorizedList() {
+                memorizedList.innerHTML = ''; // Clear the list
+                if (memorizedWords.size === 0) {
+                    const p = document.createElement('p');
+                    p.className = 'text-sm text-gray-500';
+                    p.textContent = '암기한 단어가 여기에 표시됩니다.';
+                    memorizedList.appendChild(p);
+                } else {
+                    memorizedWords.forEach(word => {
+                        const card = words.find(w => w.word === word);
+                        if (card) {
+                            const li = document.createElement('li');
+                            li.textContent = `${card.word} - ${card.meaning}`;
+                            memorizedList.appendChild(li);
+                        }
+                    });
+                }
+            }
+
+            // Function to get a random unmemorized word
+            function getRandomUnmemorizedWord() {
+                const unmemorizedIndices = words.map((_, index) => index)
+                                              .filter(index => !memorizedWords.has(words[index].word));
+
+                if (unmemorizedIndices.length === 0) {
+                    showMessage('👏 모든 단어를 다 외우셨어요!');
+                    return null;
+                }
+                
+                const randomIndex = Math.floor(Math.random() * unmemorizedIndices.length);
+                const nextIndex = unmemorizedIndices[randomIndex];
+                
+                return nextIndex;
+            }
+
+            // Function to display the flashcard content
+            function displayCard() {
+                if (words.length === 0) {
+                    showMessage('파일에 단어가 없습니다.');
+                    return;
+                }
+                const card = words[currentIndex];
+                wordDisplay.textContent = card.word;
+                categoryDisplay.textContent = card.category;
+                meaningDisplay.textContent = card.meaning;
+                example1Display.textContent = card.example1;
+                example2Display.textContent = card.example2;
+                flashcard.classList.remove('flipped');
+                updateWordCounts();
+            }
+
+            // Function to handle file processing
+            function processFile(file) {
+                if (!file) return;
+                
+                fileNameDisplay.textContent = `파일: ${file.name}`;
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    words = lines.map(line => {
+                        const [word, category, meaning, example1, example2] = line.split(',');
+                        return { word: word.trim(), category: category.trim(), meaning: meaning.trim(), example1: example1.trim(), example2: example2.trim() };
+                    });
+
+                    if (words.length > 0) {
+                        memorizedWords.clear();
+                        history = [];
+                        const firstIndex = getRandomUnmemorizedWord();
+                        if (firstIndex !== null) {
+                            currentIndex = firstIndex;
+                            history.push(currentIndex);
+                            displayCard();
+                            updateMemorizedList();
+                            fileUploadSection.classList.add('hidden');
+                            flashcardSection.classList.remove('hidden');
+                            showMessage('파일이 성공적으로 업로드되었습니다!');
+                        }
+                    } else {
+                        showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
+                    }
+                };
+                reader.onerror = () => {
+                    showMessage('파일을 읽는 도중 오류가 발생했습니다.');
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
+            // Event listener for file input
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                processFile(file);
+            });
+
+            // Event listeners for drag and drop
+            dropZone.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (event) => {
+                event.preventDefault();
+                dropZone.classList.remove('dragover');
+                const file = event.dataTransfer.files[0];
+                if (file && file.type === 'text/csv') {
+                    processFile(file);
+                } else {
+                    showMessage('유효한 CSV 파일을 드롭하세요.');
+                }
+            });
+
+            // Handle card navigation via arrow icons
+            prevArrow.addEventListener('click', () => {
+                clickSynth.triggerAttackRelease("C4", "8n");
+                if (history.length > 1) {
+                    history.pop();
+                    currentIndex = history[history.length - 1];
+                    displayCard();
+                } else {
+                    showMessage('더 이상 이전 단어가 없습니다.');
+                }
+            });
+
+            nextArrow.addEventListener('click', () => {
+                clickSynth.triggerAttackRelease("C4", "8n");
+                const nextIndex = getRandomUnmemorizedWord();
+                if (nextIndex !== null) {
+                    currentIndex = nextIndex;
+                    history.push(currentIndex);
+                    displayCard();
+                }
+            });
+            
+            // Flip flashcard on click
+            flashcardContainer.addEventListener('click', (event) => {
+                 // Check if the click is on the card itself, not the container
+                if (event.target.closest('#flashcard')) {
+                    flashcard.classList.toggle('flipped');
+                }
+            });
+
+            // Play click sound on button press
+            function playButtonClickSound() {
+                clickSynth.triggerAttackRelease("C4", "8n");
+            }
+
+            // Play success sound on memorized button press
+            function playSuccessSound() {
+                successSynth.triggerAttackRelease(["C4", "E4", "G4"], "4n");
+            }
+            
+            // Mark a word as memorized
+            memorizedButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (words.length > 0) {
+                    memorizedWords.add(words[currentIndex].word);
+                    playSuccessSound();
+                    createConfetti();
+                    showMessage(`'${words[currentIndex].word}'를 외웠습니다!`);
+                    updateWordCounts();
+                    updateMemorizedList();
+                    // Move to the next card
+                    const nextIndex = getRandomUnmemorizedWord();
+                    if (nextIndex !== null) {
+                        currentIndex = nextIndex;
+                        history.push(currentIndex);
+                        displayCard();
+                    }
+                }
+            });
+
+            // Reset memorized words
+            resetButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                playButtonClickSound();
+                memorizedWords.clear();
+                history = [];
+                const firstIndex = getRandomUnmemorizedWord();
+                if (firstIndex !== null) {
+                    currentIndex = firstIndex;
+                    history.push(currentIndex);
+                    displayCard();
+                    updateMemorizedList();
+                    showMessage('암기 상태가 초기화되었습니다!');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
