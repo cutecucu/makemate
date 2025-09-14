@@ -1,0 +1,13 @@
+{
+  "name": "flashcard-app",
+  "version": "1.0.0",
+  "description": "Flashcard app for vocabulary learning with TTS.",
+  "main": "api/tts.js",
+  "scripts": {
+    "start": "node api/tts.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.15.0",
+    "node-fetch": "^3.3.2"
+  }
+}
