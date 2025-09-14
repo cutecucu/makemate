@@ -1,66 +1,59 @@
-// Node.js 프록시 서버리스 함수
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextResponse } from 'next/server';
 
-// 환경 변수에서 API 키를 가져옵니다.
-// Vercel 대시보드에서 환경 변수를 설정해야 합니다.
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey);
+export const config = {
+    runtime: 'edge',
+};
 
-module.exports = async (req, res) => {
-    // CORS 문제를 해결하기 위한 헤더 설정
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    // preflight 요청 처리
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-
+export default async function handler(req) {
     if (req.method !== 'POST') {
-        res.status(405).json({ error: 'Only POST requests are allowed.' });
-        return;
+        return new NextResponse('Method Not Allowed', { status: 405 });
     }
 
-    if (!apiKey) {
-        res.status(500).json({ error: 'GEMINI_API_KEY environment variable is not set.' });
-        return;
-    }
-    
     try {
-        const { textToSpeak } = req.body;
+        const { textToSpeak } = await req.json();
 
         if (!textToSpeak) {
-            res.status(400).json({ error: 'Text data is missing.' });
-            return;
+            return new NextResponse('Text to speak is required', { status: 400 });
         }
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash-preview-tts",
-            responseMimeType: "audio/L16;rate=16000",
-        });
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+            console.error("GEMINI_API_KEY is not set in environment variables.");
+            return new NextResponse('API key not configured', { status: 500 });
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-tts" });
 
         const result = await model.generateContent({
             contents: [{ parts: [{ text: textToSpeak }] }],
             generationConfig: {
-                responseModality: 'audio',
+                responseModalities: ["AUDIO"],
                 speechConfig: {
-                    voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } }
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: "Kore" }
+                    }
                 }
-            }
+            },
         });
 
-        const part = result.candidates[0].content.parts[0];
-        const audioData = part.inlineData.data;
-        const mimeType = part.inlineData.mimeType;
-        const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-        const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+        const audioData = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        const mimeType = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.mimeType;
 
-        res.status(200).json({ audioData, sampleRate });
+        if (audioData && mimeType) {
+            return new NextResponse(JSON.stringify({ audioData, sampleRate: parseInt(mimeType.match(/rate=(\d+)/)[1], 10) }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        } else {
+            console.error("Audio data not found in API response.");
+            return new NextResponse('Audio data not found', { status: 500 });
+        }
 
     } catch (error) {
-        console.error('API request failed:', error);
-        res.status(500).json({ error: 'Failed to generate speech. Please check your API key and network connection.' });
+        console.error('Error in TTS API handler:', error);
+        return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
     }
-};
+}
