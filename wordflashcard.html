@@ -313,26 +313,32 @@
                     db = getFirestore(app);
                     auth = getAuth(app);
                     
-                    let userCredential;
                     if (typeof __initial_auth_token !== 'undefined') {
-                        userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+                        await signInWithCustomToken(auth, __initial_auth_token);
                     } else {
-                        userCredential = await signInAnonymously(auth);
+                        await signInAnonymously(auth);
                     }
                     
-                    userId = userCredential.user.uid;
-                    await loadSavedFiles();
-                    await restoreLastSession();
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                             userId = user.uid;
+                             await loadSavedFiles();
+                             await restoreLastSession();
+                        } else {
+                             // This case is unlikely to be reached due to signInAnonymously
+                             console.log("User is not authenticated. Cannot load saved files.");
+                        }
+                    });
 
                 } catch (e) {
                     console.error("Firebase initialization failed:", e);
-                    initialPage.classList.add('hidden');
-                    flashcardSection.classList.remove('hidden');
-                    showMessage("데이터베이스 연결에 실패했습니다. 단어장 업로드는 가능하지만, 기록은 저장되지 않습니다.");
+                    initialPage.classList.remove('hidden');
+                    flashcardSection.classList.add('hidden');
+                    showMessage("데이터베이스 연결에 실패했습니다. 기록은 저장되지 않습니다.");
                 }
             }
-
             initializeFirebaseAndLoadData();
+
 
             // CSV sample file content with BOM
             const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
