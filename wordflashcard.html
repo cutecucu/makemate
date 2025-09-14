@@ -659,7 +659,9 @@
             // Event listener for file input
             fileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
-                processFile(file);
+                if (file) {
+                    processFile(file);
+                }
             });
 
             // Event listeners for drag and drop
@@ -822,7 +824,7 @@
                         responseModalities: ["AUDIO"],
                         speechConfig: {
                             voiceConfig: {
-                                prebuiltVoiceConfig: { voiceName: "Fenrir" } 
+                                prebuiltVoiceConfig: { voiceName: "Zephyr" } 
                             }
                         }
                     },
