@@ -127,11 +127,34 @@
             max-height: 200px;
             overflow-y: auto;
         }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
     <header class="flex justify-between items-center text-white">
-        <div class="py-4 pl-4 pr-12 rounded-br-3xl bg-[#3c3d3f] w-fit">
+        <div class="py-4 pl-4 pr-12 rounded-br-3xl bg-[#4A433A] w-fit">
             <h1 class="text-xl md:text-2xl font-bold whitespace-nowrap text-white">📚 단어 암기 플래시 카드</h1>
         </div>
         <div class="w-12 h-12 rounded-lg mr-4 overflow-hidden">
@@ -140,46 +163,9 @@
     </header>
 
     <main class="flex-grow flex flex-col items-center justify-center p-4">
-        <div id="file-upload-section" class="flex flex-col items-center w-full max-w-lg mb-8">
-            <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
-                <h2 class="text-lg font-bold mb-2">CSV 파일 형식 안내</h2>
-                <p class="text-sm text-gray-700 mb-4">
-                    플래시카드는 아래 순서대로 작성된 CSV 파일을 사용합니다.
-                </p>
-                <ul class="text-left text-sm text-gray-800 space-y-2">
-                    <li>단어: 외울 단어 (예: Apple)</li>
-                    <li>구분: 단어의 종류 (예: 명사)</li>
-                    <li>뜻: 단어의 의미 (예: 사과)</li>
-                    <li>예문1: 단어가 사용된 첫 번째 문장 (예: I love to eat apples.)</li>
-                    <li>예문2: 단어가 사용된 두 번째 문장 (예: An apple a day keeps the doctor away.)</li>
-                </ul>
-                <a id="download-link" href="#" class="inline-block mt-4 text-orange-500 hover:underline">
-                    샘플 CSV 파일 다운로드
-                </a>
-            </div>
-            
-            <div id="drop-zone" class="drop-zone w-full">
-                <p class="text-sm text-gray-700">파일을 여기에 끌어다 놓으세요</p>
-                <p class="my-2 text-gray-500">또는</p>
-                <label for="file-input" class="cursor-pointer bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">
-                    파일 선택
-                </label>
-            </div>
-            <input id="file-input" type="file" accept=".csv" class="hidden">
-            <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
-
-            <details id="saved-files-details" class="mt-8 w-full p-4 bg-gray-100 rounded-xl shadow-md hidden">
-                <summary class="text-lg font-bold text-gray-800 cursor-pointer">
-                    저장된 단어장
-                </summary>
-                <ul id="saved-file-list" class="mt-4 space-y-2 saved-file-list">
-                    <!-- Saved files will be dynamically loaded here -->
-                </ul>
-            </details>
-        </div>
-
-        <div id="flashcard-section" class="hidden flex flex-col items-center w-full h-full">
-            <div id="flashcard-container" class="flashcard-container w-11/12 h-64 sm:h-80 md:h-96 cursor-pointer">
+        <div id="flashcard-section" class="hidden flex flex-col items-center w-full h-full relative">
+            <button id="open-modal-button" class="absolute top-2 right-2 z-10 bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-2 px-3 rounded-xl shadow-lg transition-colors duration-200 text-sm">단어장 변경</button>
+            <div id="flashcard-container" class="flashcard-container w-11/12 h-[50vh] cursor-pointer">
                 <div class="flashcard" id="flashcard">
                     <div class="flashcard-front bg-white flex flex-col justify-center items-center p-6 text-gray-800">
                         <p id="word-display" class="word-text"></p>
@@ -193,7 +179,7 @@
                 </div>
             </div>
             
-            <div class="flex justify-center mt-8">
+            <div class="flex flex-col justify-center items-center mt-8 space-y-4">
                 <button id="memorized-button" class="bg-[#6B8E23] hover:bg-[#526D1E] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">암기 완료 🎉</button>
             </div>
             
@@ -215,14 +201,60 @@
     
     <div id="message-container"></div>
     
+    <!-- File Management Modal -->
+    <div id="file-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-end">
+                <button id="close-modal-button" class="text-gray-500 hover:text-gray-700 font-bold text-2xl">×</button>
+            </div>
+            <div id="file-upload-section" class="flex flex-col items-center w-full mb-8">
+                <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
+                    <h2 class="text-lg font-bold mb-2">CSV 파일 형식 안내</h2>
+                    <p class="text-sm text-gray-700 mb-4">
+                        플래시카드는 아래 순서대로 작성된 CSV 파일을 사용합니다.
+                    </p>
+                    <ul class="text-left text-sm text-gray-800 space-y-2">
+                        <li>단어: 외울 단어 (예: Apple)</li>
+                        <li>구분: 단어의 종류 (예: 명사)</li>
+                        <li>뜻: 단어의 의미 (예: 사과)</li>
+                        <li>예문1: 단어가 사용된 첫 번째 문장 (예: I love to eat apples.)</li>
+                        <li>예문2: 단어가 사용된 두 번째 문장 (예: An apple a day keeps the doctor away.)</li>
+                    </ul>
+                    <a id="download-link" href="#" class="inline-block mt-4 text-orange-500 hover:underline">
+                        샘플 CSV 파일 다운로드
+                    </a>
+                </div>
+                
+                <div id="drop-zone" class="drop-zone w-full">
+                    <p class="text-sm text-gray-700">파일을 여기에 끌어다 놓으세요</p>
+                    <p class="my-2 text-gray-500">또는</p>
+                    <label for="file-input" class="cursor-pointer bg-[#D67B2A] hover:bg-[#A95E20] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">
+                        파일 선택
+                    </label>
+                </div>
+                <input id="file-input" type="file" accept=".csv" class="hidden">
+                <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
+
+                <details id="saved-files-details" class="mt-8 w-full p-4 bg-gray-100 rounded-xl shadow-md hidden">
+                    <summary class="text-lg font-bold text-gray-800 cursor-pointer">
+                        저장된 단어장
+                    </summary>
+                    <ul id="saved-file-list" class="mt-4 space-y-2 saved-file-list">
+                        <!-- Saved files will be dynamically loaded here -->
+                    </ul>
+                </details>
+            </div>
+        </div>
+    </div>
+    
     <footer class="mt-auto p-4 text-center text-white bg-[#6b2537]">
         &copy; 2025 makemate : )
     </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, onSnapshot, query, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('file-input');
@@ -246,7 +278,10 @@
             const downloadLink = document.getElementById('download-link');
             const savedFilesDetails = document.getElementById('saved-files-details');
             const savedFileList = document.getElementById('saved-file-list');
-            
+            const openModalButton = document.getElementById('open-modal-button');
+            const closeModalButton = document.getElementById('close-modal-button');
+            const fileModal = document.getElementById('file-modal');
+
             let words = [];
             let currentIndex = 0;
             let history = [];
@@ -255,27 +290,56 @@
             const successSynth = new Tone.PolySynth().toDestination();
             const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
             let startX = 0;
-            
+            let currentFileId = null;
+
             // Firebase setup
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            const auth = getAuth(app);
-            let userId = null;
-            let dbInitialized = false;
+            let db, auth, userId, dbInitialized = false;
 
             // Wait for authentication state to be ready
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                if (typeof __initial_auth_token !== 'undefined') {
+                    signInWithCustomToken(auth, __initial_auth_token).then((userCredential) => {
+                        userId = userCredential.user.uid;
+                        dbInitialized = true;
+                        initApp();
+                    }).catch(async (error) => {
+                        console.error("Custom token sign-in failed. Signing in anonymously.", error);
+                        const anonymousUser = await signInAnonymously(auth);
+                        userId = anonymousUser.user.uid;
+                        dbInitialized = true;
+                        initApp();
+                    });
                 } else {
-                    const anonymousUser = await signInAnonymously(auth);
-                    userId = anonymousUser.user.uid;
+                    signInAnonymously(auth).then((userCredential) => {
+                        userId = userCredential.user.uid;
+                        dbInitialized = true;
+                        initApp();
+                    }).catch(async (error) => {
+                         console.error("Anonymous sign-in failed.", error);
+                    });
                 }
-                dbInitialized = true;
-                await loadSavedFiles();
-            });
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                initApp();
+            }
+
+            async function initApp() {
+                if (dbInitialized) {
+                    await loadSavedFiles();
+                    if (words.length === 0) {
+                        fileModal.classList.remove('hidden');
+                    } else {
+                        fileModal.classList.add('hidden');
+                        fileUploadSection.classList.add('hidden');
+                        flashcardSection.classList.remove('hidden');
+                    }
+                }
+            }
 
             // CSV sample file content with BOM
             const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
@@ -315,7 +379,7 @@
             
             // Update the list of memorized words
             function updateMemorizedList() {
-                memorizedList.innerHTML = ''; // Clear the list
+                memorizedList.innerHTML = '';
                 if (memorizedWords.size === 0) {
                     const p = document.createElement('p');
                     p.className = 'text-sm text-gray-500';
@@ -367,43 +431,275 @@
                 flashcard.classList.remove('flipped');
                 updateWordCounts();
             }
-            
+
+            // Function to handle file processing
+            async function processFile(file) {
+                if (!file) return;
+                
+                fileNameDisplay.textContent = `파일: ${file.name}`;
+                showMessage('파일을 처리 중입니다...');
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const text = e.target.result;
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    words = lines.map(line => {
+                        const parts = line.split(',');
+                        if (parts.length < 5) {
+                            return { word: parts[0] || '', category: parts[1] || '', meaning: parts[2] || '', example1: parts[3] || '', example2: parts[4] || '' };
+                        }
+                        const [word, category, meaning, example1, example2] = parts;
+                        return { word: word.trim(), category: category.trim(), meaning: meaning.trim(), example1: example1.trim(), example2: example2.trim() };
+                    });
+                    
+                    if (words.length > 0) {
+                        if (dbInitialized && userId) {
+                            const newDocRef = await addDoc(collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`), {
+                                name: file.name,
+                                wordsJson: JSON.stringify(words),
+                                memorizedWords: [],
+                                timestamp: Date.now()
+                            });
+                            currentFileId = newDocRef.id;
+                            showMessage('파일이 성공적으로 저장되었습니다!');
+                        }
+
+                        memorizedWords.clear();
+                        history = [];
+                        const firstIndex = getRandomUnmemorizedWord();
+                        if (firstIndex !== null) {
+                            currentIndex = firstIndex;
+                            history.push(currentIndex);
+                            displayCard();
+                            updateMemorizedList();
+                            fileModal.classList.add('hidden');
+                            flashcardSection.classList.remove('hidden');
+                        }
+                    } else {
+                        showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
+                    }
+                };
+                reader.onerror = () => {
+                    showMessage('파일을 읽는 도중 오류가 발생했습니다.');
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
             // Function to load file content from Firestore
-            async function loadFileContent(fileId) {
-                if (!dbInitialized) {
+            async function loadFileContent(fileId, fileName) {
+                if (!dbInitialized || !userId) {
                     showMessage('데이터베이스를 불러오는 중입니다...');
                     return;
                 }
-                showMessage('단어장을 불러오는 중...');
-                const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, fileId);
-                const fileSnap = await getDoc(fileRef);
-                if (fileSnap.exists()) {
-                    const data = fileSnap.data();
-                    const parsedWords = JSON.parse(data.wordsJson);
-                    words = parsedWords;
-                    memorizedWords.clear();
-                    history = [];
-                    const firstIndex = getRandomUnmemorizedWord();
-                    if (firstIndex !== null) {
-                        currentIndex = firstIndex;
-                        history.push(currentIndex);
-                        displayCard();
-                        updateMemorizedList();
-                        fileUploadSection.classList.add('hidden');
-                        flashcardSection.classList.remove('hidden');
-                        showMessage(`'${data.name}' 단어장을 불러왔습니다.`);
+                showMessage(`'${fileName}' 단어장을 불러오는 중...`);
+                const q = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, fileId);
+                onSnapshot(q, (docSnapshot) => {
+                    if (docSnapshot.exists()) {
+                        const data = docSnapshot.data();
+                        currentFileId = docSnapshot.id;
+                        try {
+                            words = JSON.parse(data.wordsJson);
+                            memorizedWords = new Set(data.memorizedWords || []);
+                            history = [];
+                            const firstIndex = getRandomUnmemorizedWord();
+                            if (firstIndex !== null) {
+                                currentIndex = firstIndex;
+                                history.push(currentIndex);
+                                displayCard();
+                                updateMemorizedList();
+                                fileModal.classList.add('hidden');
+                                flashcardSection.classList.remove('hidden');
+                                showMessage(`'${fileName}' 단어장을 불러왔습니다.`);
+                            }
+                        } catch (e) {
+                            console.error("Failed to parse JSON:", e);
+                            showMessage("단어장 데이터를 불러오는 데 실패했습니다.");
+                        }
+                    } else {
+                        showMessage('파일을 찾을 수 없습니다.');
                     }
-                } else {
-                    showMessage('파일을 찾을 수 없습니다.');
-                }
+                });
             }
 
             // Function to load saved files from Firestore and display them
             async function loadSavedFiles() {
-                if (!dbInitialized) {
+                if (!dbInitialized || !userId) {
                     return;
                 }
-                const q = collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`);
-                const querySnapshot = await getDocs(q);
-                
-                if (!querySnapshot.empty
+                const filesCollection = collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`);
+                onSnapshot(filesCollection, (querySnapshot) => {
+                    if (!querySnapshot.empty) {
+                        savedFilesDetails.classList.remove('hidden');
+                        savedFileList.innerHTML = '';
+                        querySnapshot.forEach((doc) => {
+                            const fileData = doc.data();
+                            const li = document.createElement('li');
+                            li.className = 'cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200';
+                            li.textContent = `${fileData.name} (${new Date(fileData.timestamp).toLocaleDateString()})`;
+                            li.dataset.fileId = doc.id;
+                            li.addEventListener('click', () => {
+                                loadFileContent(li.dataset.fileId, fileData.name);
+                            });
+                            savedFileList.appendChild(li);
+                        });
+                    } else {
+                         savedFilesDetails.classList.add('hidden');
+                         savedFileList.innerHTML = '';
+                    }
+                });
+            }
+
+            // Event listener for file input
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                processFile(file);
+            });
+
+            // Event listeners for drag and drop
+            dropZone.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (event) => {
+                event.preventDefault();
+                dropZone.classList.remove('dragover');
+                const file = event.dataTransfer.files[0];
+                if (file && file.type === 'text/csv') {
+                    processFile(file);
+                } else {
+                    showMessage('유효한 CSV 파일을 드롭하세요.');
+                }
+            });
+
+            // Handle card swiping
+            flashcardContainer.addEventListener('mousedown', (event) => {
+                startX = event.pageX;
+            });
+            flashcardContainer.addEventListener('mouseup', (event) => {
+                const endX = event.pageX;
+                handleSwipe(startX, endX);
+            });
+            flashcardContainer.addEventListener('touchstart', (event) => {
+                startX = event.touches[0].pageX;
+            });
+            flashcardContainer.addEventListener('touchend', (event) => {
+                const endX = event.changedTouches[0].pageX;
+                handleSwipe(startX, endX);
+            });
+
+            function handleSwipe(start, end) {
+                const deltaX = end - start;
+                const swipeThreshold = 50;
+                if (Math.abs(deltaX) > swipeThreshold) {
+                    clickSynth.triggerAttackRelease("C4", "8n");
+                    if (deltaX > 0) {
+                        // Swipe right for previous card
+                        if (history.length > 1) {
+                            history.pop();
+                            currentIndex = history[history.length - 1];
+                            displayCard();
+                        } else {
+                            showMessage('더 이상 이전 단어가 없습니다.');
+                        }
+                    } else {
+                        // Swipe left for next card
+                        const nextIndex = getRandomUnmemorizedWord();
+                        if (nextIndex !== null) {
+                            currentIndex = nextIndex;
+                            history.push(currentIndex);
+                            displayCard();
+                        }
+                    }
+                }
+            }
+
+            // Flip flashcard on click
+            flashcardContainer.addEventListener('click', (event) => {
+                 // Check if the click is on the card itself, not the container
+                if (event.target.closest('#flashcard')) {
+                    flashcard.classList.toggle('flipped');
+                }
+            });
+
+            // Play click sound on button press
+            function playButtonClickSound() {
+                clickSynth.triggerAttackRelease("C4", "8n");
+            }
+
+            // Play success sound on memorized button press
+            function playSuccessSound() {
+                successSynth.triggerAttackRelease(["C4", "E4", "G4"], "4n");
+            }
+            
+            // Mark a word as memorized and save to Firestore
+            memorizedButton.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                if (words.length > 0) {
+                    const currentWord = words[currentIndex].word;
+                    if (!memorizedWords.has(currentWord)) {
+                        memorizedWords.add(currentWord);
+                        playSuccessSound();
+                        createConfetti();
+                        showMessage(`'${currentWord}'를 외웠습니다!`);
+                        updateWordCounts();
+                        updateMemorizedList();
+
+                        if (dbInitialized && userId && currentFileId) {
+                            const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, currentFileId);
+                            await updateDoc(fileRef, {
+                                memorizedWords: Array.from(memorizedWords)
+                            });
+                        }
+                    }
+                    
+                    const nextIndex = getRandomUnmemorizedWord();
+                    if (nextIndex !== null) {
+                        currentIndex = nextIndex;
+                        history.push(currentIndex);
+                        displayCard();
+                    } else {
+                        showMessage('모든 단어를 다 외우셨어요! 초기화하려면 버튼을 눌러주세요.');
+                    }
+                }
+            });
+
+            // Reset memorized words
+            resetButton.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                playButtonClickSound();
+                memorizedWords.clear();
+                history = [];
+                const firstIndex = getRandomUnmemorizedWord();
+                if (firstIndex !== null) {
+                    currentIndex = firstIndex;
+                    history.push(currentIndex);
+                    displayCard();
+                    updateMemorizedList();
+                    showMessage('암기 상태가 초기화되었습니다!');
+                }
+
+                if (dbInitialized && userId && currentFileId) {
+                    const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, currentFileId);
+                    await updateDoc(fileRef, {
+                        memorizedWords: []
+                    });
+                }
+            });
+
+            // Modal event listeners
+            openModalButton.addEventListener('click', () => {
+                fileModal.classList.remove('hidden');
+            });
+
+            closeModalButton.addEventListener('click', () => {
+                fileModal.classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
