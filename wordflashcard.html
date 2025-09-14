@@ -383,21 +383,39 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const text = e.target.result;
-                    const lines = text.split('\n').filter(line => line.trim() !== '');
-                    
-                    if (lines.length === 0) {
-                        showMessage('파일에 유효한 데이터가 없습니다.');
-                        return;
-                    }
+                    // Improved parsing logic to handle commas within quoted strings
+                    const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
 
                     words = lines.map(line => {
-                        const parts = line.split(',');
-                        if (parts.length < 5) {
-                             return null;
+                        const parts = [];
+                        let currentPart = '';
+                        let inQuote = false;
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
+                            if (char === '"') {
+                                inQuote = !inQuote;
+                            } else if (char === ',' && !inQuote) {
+                                parts.push(currentPart.trim());
+                                currentPart = '';
+                            } else {
+                                currentPart += char;
+                            }
                         }
-                        const [word, category, meaning, example1, example2] = parts;
-                        return { word: word.trim(), category: category.trim(), meaning: meaning.trim(), example1: example1.trim(), example2: example2.trim() };
-                    }).filter(word => word !== null);
+                        parts.push(currentPart.trim());
+                        
+                        // Ensure all 5 parts are present
+                        if (parts.length >= 5 && parts[0] && parts[0].trim() !== '') {
+                            const [word, category, meaning, example1, example2] = parts;
+                            return {
+                                word: word.trim(),
+                                category: category.trim(),
+                                meaning: meaning.trim(),
+                                example1: example1.trim(),
+                                example2: example2.trim()
+                            };
+                        }
+                        return null; // Return null for invalid lines
+                    }).filter(word => word !== null); // Filter out any invalid lines
                     
                     if (words.length > 0) {
                         memorizedWords.clear();
