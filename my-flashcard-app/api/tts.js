@@ -42,7 +42,10 @@ export default async function handler(req) {
         const mimeType = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.mimeType;
 
         if (audioData && mimeType) {
-            return new NextResponse(JSON.stringify({ audioData, sampleRate: parseInt(mimeType.match(/rate=(\d+)/)[1], 10) }), {
+            const match = mimeType.match(/rate=(\d+)/);
+            const sampleRate = match ? parseInt(match[1], 10) : 24000; // Defaulting to 24000 if not found
+
+            return new NextResponse(JSON.stringify({ audioData, sampleRate }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' },
             });
