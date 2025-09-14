@@ -67,7 +67,7 @@
             overflow-wrap: break-word;
         }
         .example-text {
-            font-size: clamp(0.75rem, 2.5vw, 1.25rem);
+            font-size: clamp(0.85rem, 2.75vw, 1.35rem);
             font-weight: 400;
             line-height: 1.5;
             text-align: center;
@@ -116,6 +116,9 @@
             border-color: #3b82f6;
             background-color: #eff6ff;
         }
+        .highlight {
+            color: #D67B2A;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -124,7 +127,7 @@
             <h1 class="text-2xl md:text-3xl font-bold whitespace-nowrap text-white">📚 단어 암기 플래시 카드</h1>
         </div>
         <div class="w-12 h-12 rounded-lg mr-4 overflow-hidden">
-            <img src="https://placehold.co/48x48/FFEB99/000000?text=🧠" alt="로고" class="w-full h-full object-cover">
+            <img src="https://github.com/cutecucu/makemate/logo.png" alt="로고" class="w-full h-full object-cover">
         </div>
     </header>
 
@@ -173,16 +176,15 @@
                 </div>
             </div>
             
-            <div class="text-center mt-4 text-gray-600 font-bold">
-                <span id="memorized-count"></span> / <span id="total-words"></span>
-            </div>
-
             <div class="flex justify-center mt-8">
                 <button id="memorized-button" class="bg-[#6B8E23] hover:bg-[#526D1E] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">암기 완료 🎉</button>
             </div>
             
             <details class="mt-8 w-full max-w-lg p-4 bg-gray-100 rounded-xl shadow-md">
-                <summary class="text-lg font-bold text-gray-800 cursor-pointer">암기한 단어 보기</summary>
+                <summary class="flex justify-between items-center text-lg font-bold text-gray-800 cursor-pointer">
+                    <span>암기한 단어 보기</span>
+                    <span class="text-sm text-gray-600 font-normal"><span id="memorized-count"></span> / <span id="total-words"></span></span>
+                </summary>
                 <div class="flex justify-between items-center my-4">
                     <h3 class="text-md font-bold">내 암기 단어장</h3>
                     <button id="reset-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-xl shadow-lg transition-colors duration-200 text-sm">암기 초기화 🔄</button>
@@ -313,8 +315,11 @@
                 wordDisplay.textContent = card.word;
                 categoryDisplay.textContent = card.category;
                 meaningDisplay.textContent = card.meaning;
-                example1Display.textContent = card.example1;
-                example2Display.textContent = card.example2;
+                
+                const wordRegex = new RegExp(`\\b${card.word}\\b`, 'gi');
+                example1Display.innerHTML = card.example1.replace(wordRegex, `<span class="highlight">$&</span>`);
+                example2Display.innerHTML = card.example2.replace(wordRegex, `<span class="highlight">$&</span>`);
+                
                 flashcard.classList.remove('flipped');
                 updateWordCounts();
             }
