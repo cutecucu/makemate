@@ -259,7 +259,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, onSnapshot, query, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -305,44 +305,31 @@
             // Firebase setup
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            let db, auth, userId, dbInitialized = false;
+            let db, auth, userId;
 
             // Wait for authentication state to be ready
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                if (typeof __initial_auth_token !== 'undefined') {
-                    signInWithCustomToken(auth, __initial_auth_token).then((userCredential) => {
-                        userId = userCredential.user.uid;
-                        dbInitialized = true;
-                        initApp();
-                    }).catch(async (error) => {
-                        console.error("Custom token sign-in failed. Signing in anonymously.", error);
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                    } else {
                         const anonymousUser = await signInAnonymously(auth);
                         userId = anonymousUser.user.uid;
-                        dbInitialized = true;
-                        initApp();
-                    });
-                } else {
-                    signInAnonymously(auth).then((userCredential) => {
-                        userId = userCredential.user.uid;
-                        dbInitialized = true;
-                        initApp();
-                    }).catch(async (error) => {
-                         console.error("Anonymous sign-in failed.", error);
-                    });
-                }
-            } catch (e) {
-                console.error("Firebase initialization failed:", e);
-                initApp();
-            }
-
-            async function initApp() {
-                if (dbInitialized) {
+                    }
                     await loadSavedFiles();
                     await restoreLastSession();
-                }
+                });
+                
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                // Fallback to a non-database version if Firebase fails
+                initialPage.classList.add('hidden');
+                flashcardSection.classList.remove('hidden');
+                showMessage("데이터베이스 연결에 실패했습니다. 단어장 업로드는 가능하지만, 기록은 저장되지 않습니다.");
             }
 
             // CSV sample file content with BOM
@@ -457,7 +444,7 @@
                     });
                     
                     if (words.length > 0) {
-                        if (dbInitialized && userId) {
+                        if (userId) { // Check if userId is available before proceeding
                             const newDocRef = await addDoc(collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`), {
                                 name: file.name,
                                 wordsJson: JSON.stringify(words),
@@ -465,6 +452,8 @@
                                 timestamp: Date.now()
                             });
                             loadData({ wordsJson: JSON.stringify(words), memorizedWords: [] }, file.name, newDocRef.id);
+                        } else {
+                            showMessage("사용자 인증 정보가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.");
                         }
                     } else {
                         showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
@@ -495,7 +484,9 @@
                         showMessage(`'${fileName}' 단어장을 불러왔습니다.`);
                         const baseName = fileName.replace('.csv', '');
                         currentFilenameDisplay.textContent = baseName;
-                        saveLastUsedFile(fileId);
+                        if (userId) {
+                            saveLastUsedFile(fileId);
+                        }
                     }
                 } catch (e) {
                     console.error("Failed to parse JSON:", e);
@@ -505,7 +496,7 @@
 
             // Function to load file content from Firestore
             async function loadFileContent(fileId, fileName) {
-                if (!dbInitialized || !userId) {
+                if (!userId) {
                     showMessage('데이터베이스를 불러오는 중입니다...');
                     return;
                 }
@@ -522,7 +513,7 @@
 
             // Function to load saved files from Firestore and display them
             async function loadSavedFiles() {
-                if (!dbInitialized || !userId) {
+                if (!userId) {
                     return;
                 }
                 const filesCollection = collection(db, `artifacts/${appId}/users/${userId}/uploaded_files`);
@@ -549,7 +540,7 @@
 
             // Function to save the ID of the last used file
             async function saveLastUsedFile(fileId) {
-                if (dbInitialized && userId) {
+                if (userId) {
                     const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'user_preferences');
                     try {
                         await setDoc(settingsRef, { lastUsedFileId: fileId }, { merge: true });
@@ -561,7 +552,7 @@
 
             // Function to restore the last session
             async function restoreLastSession() {
-                if (!dbInitialized || !userId) {
+                if (!userId) {
                     return;
                 }
                 const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'user_preferences');
@@ -758,7 +749,7 @@
                         updateWordCounts();
                         updateMemorizedList();
 
-                        if (dbInitialized && userId && currentFileId) {
+                        if (userId && currentFileId) {
                             const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, currentFileId);
                             await updateDoc(fileRef, {
                                 memorizedWords: Array.from(memorizedWords)
@@ -792,7 +783,7 @@
                     showMessage('암기 상태가 초기화되었습니다!');
                 }
 
-                if (dbInitialized && userId && currentFileId) {
+                if (userId && currentFileId) {
                     const fileRef = doc(db, `artifacts/${appId}/users/${userId}/uploaded_files`, currentFileId);
                     await updateDoc(fileRef, {
                         memorizedWords: []
