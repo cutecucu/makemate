@@ -185,6 +185,15 @@
             <p id="file-name" class="mt-4 text-sm text-gray-600 truncate w-full text-center"></p>
         </div>
 
+        <div id="upload-success-section" class="hidden flex flex-col items-center w-full max-w-lg mb-8 p-4">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">단어장 업로드가 완료되었습니다.</h2>
+            <div class="bg-gray-100 p-6 rounded-xl shadow-md mb-6 w-full text-center">
+                <p class="text-lg text-gray-800 font-bold mb-2">선택한 파일: <span id="uploaded-file-name" class="text-orange-500"></span></p>
+                <p class="text-sm text-gray-600">이제 학습을 시작할 준비가 되었습니다.</p>
+            </div>
+            <button id="start-learning-button" class="bg-[#6B8E23] hover:bg-[#526D1E] text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors duration-200">학습 시작하기</button>
+        </div>
+
         <div id="flashcard-section" class="hidden flex flex-col items-center w-full h-full relative">
             <div class="w-11/12 flex justify-between items-center mb-4">
                 <p id="current-filename-display" class="text-lg font-bold text-gray-800"></p>
@@ -247,12 +256,13 @@
             const fileInput = document.getElementById('file-input');
             const fileNameDisplay = document.getElementById('file-name');
             const fileUploadSection = document.getElementById('file-upload-section');
+            const uploadSuccessSection = document.getElementById('upload-success-section');
             const flashcardSection = document.getElementById('flashcard-section');
             const flashcard = document.getElementById('flashcard');
             const flashcardContainer = document.getElementById('flashcard-container');
             const wordDisplay = document.getElementById('word-display');
             const categoryDisplay = document.getElementById('category-display');
-            const meaningDisplay = document =getElementById('meaning-display');
+            const meaningDisplay = document.getElementById('meaning-display');
             const example1Display = document.getElementById('example1-display');
             const example2Display = document.getElementById('example2-display');
             const memorizedButton = document.getElementById('memorized-button');
@@ -266,6 +276,8 @@
             const speakButton = document.getElementById('speak-button');
             const currentFilenameDisplay = document.getElementById('current-filename-display');
             const loadNewFileButton = document.getElementById('load-new-file-button');
+            const startLearningButton = document.getElementById('start-learning-button');
+            const uploadedFileNameDisplay = document.getElementById('uploaded-file-name');
 
             let words = [];
             let currentIndex = 0;
@@ -275,6 +287,7 @@
             const successSynth = new Tone.PolySynth().toDestination();
             const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
             let startX = 0;
+            let currentFileName = '';
             
             // CSV sample file content with BOM
             const sampleCSV = "\uFEFF단어,구분,뜻,예문1,예문2\napple,명사,사과,I love to eat apples.,An apple a day keeps the doctor away.\nbanana,명사,바나나,I eat a banana for breakfast.,The monkey peeled the banana.\ncar,명사,자동차,My car is red.,I'm driving my new car.\n";
@@ -349,7 +362,7 @@
             }
 
             // Function to display the flashcard content
-            function displayCard(fileName) {
+            function displayCard() {
                 if (words.length === 0) {
                     showMessage('파일에 단어가 없습니다.');
                     return;
@@ -366,7 +379,7 @@
                 flashcard.classList.remove('flipped');
                 updateWordCounts();
 
-                const baseName = fileName.replace('.csv', '');
+                const baseName = currentFileName.replace('.csv', '');
                 currentFilenameDisplay.textContent = baseName;
             }
 
@@ -418,18 +431,12 @@
                     }).filter(word => word !== null); // Filter out any invalid lines
                     
                     if (words.length > 0) {
+                        currentFileName = file.name;
                         memorizedWords.clear();
                         history = [];
-                        const firstIndex = getRandomUnmemorizedWord();
-                        if (firstIndex !== null) {
-                            currentIndex = firstIndex;
-                            history.push(currentIndex);
-                            displayCard(file.name);
-                            updateMemorizedList();
-                            fileUploadSection.classList.add('hidden');
-                            flashcardSection.classList.remove('hidden');
-                            showMessage(`'${file.name}' 단어장을 불러왔습니다.`);
-                        }
+                        fileUploadSection.classList.add('hidden');
+                        uploadedFileNameDisplay.textContent = file.name;
+                        uploadSuccessSection.classList.remove('hidden');
                     } else {
                         showMessage('유효한 데이터가 없습니다. CSV 형식을 확인해주세요.');
                     }
@@ -571,8 +578,7 @@
                         if (history.length > 1) {
                             history.pop();
                             currentIndex = history[history.length - 1];
-                            // `displayCard`에 현재 파일명을 직접 전달
-                            displayCard(currentFilenameDisplay.textContent + '.csv');
+                            displayCard();
                         } else {
                             showMessage('더 이상 이전 단어가 없습니다.');
                         }
@@ -582,8 +588,7 @@
                         if (nextIndex !== null) {
                             currentIndex = nextIndex;
                             history.push(currentIndex);
-                            // `displayCard`에 현재 파일명을 직접 전달
-                            displayCard(currentFilenameDisplay.textContent + '.csv');
+                            displayCard();
                         }
                     }
                 }
@@ -625,8 +630,7 @@
                     if (nextIndex !== null) {
                         currentIndex = nextIndex;
                         history.push(currentIndex);
-                        // `displayCard`에 현재 파일명을 직접 전달
-                        displayCard(currentFilenameDisplay.textContent + '.csv');
+                        displayCard();
                     } else {
                         showMessage('모든 단어를 다 외우셨어요! 초기화하려면 버튼을 눌러주세요.');
                     }
@@ -643,8 +647,7 @@
                 if (firstIndex !== null) {
                     currentIndex = firstIndex;
                     history.push(currentIndex);
-                    // `displayCard`에 현재 파일명을 직접 전달
-                    displayCard(currentFilenameDisplay.textContent + '.csv');
+                    displayCard();
                     updateMemorizedList();
                     showMessage('암기 상태가 초기화되었습니다!');
                 }
@@ -708,6 +711,20 @@
             loadNewFileButton.addEventListener('click', () => {
                 flashcardSection.classList.add('hidden');
                 fileUploadSection.classList.remove('hidden');
+            });
+
+            // Event listener for Start Learning button
+            startLearningButton.addEventListener('click', () => {
+                uploadSuccessSection.classList.add('hidden');
+                flashcardSection.classList.remove('hidden');
+                const firstIndex = getRandomUnmemorizedWord();
+                if (firstIndex !== null) {
+                    currentIndex = firstIndex;
+                    history.push(currentIndex);
+                    displayCard();
+                    updateMemorizedList();
+                    showMessage('학습을 시작합니다.');
+                }
             });
         });
     </script>
