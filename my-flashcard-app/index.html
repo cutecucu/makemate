@@ -403,7 +403,7 @@
                         const text = e.target.result;
                         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
 
-                        words = lines.map(line => {
+                        words = lines.slice(1).map(line => {
                             const parts = [];
                             let currentPart = '';
                             let inQuote = false;
@@ -670,6 +670,12 @@
                 event.stopPropagation();
                 if (words.length === 0 || !words[currentIndex]) {
                     showMessage('음성을 생성할 단어가 없습니다.');
+                    return;
+                }
+
+                // Check if the app is running in a local file context (e.g., from a file:// URL)
+                if (window.location.protocol === 'file:') {
+                    showMessage('음성 생성 기능은 Vercel과 같은 웹 서버에 배포해야 작동합니다.');
                     return;
                 }
 
