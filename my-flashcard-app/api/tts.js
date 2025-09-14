@@ -30,7 +30,6 @@ export default async function handler(req) {
         const result = await model.generateContent({
             contents: [{ parts: [{ text: textToSpeak }] }],
             generationConfig: {
-                responseModalities: ["AUDIO"],
                 speechConfig: {
                     voiceConfig: {
                         prebuiltVoiceConfig: { voiceName: "Kore" }
