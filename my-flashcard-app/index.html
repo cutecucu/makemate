@@ -259,7 +259,6 @@
             const fileInput = document.getElementById('file-input');
             const fileNameDisplay = document.getElementById('file-name');
             const fileUploadSection = document.getElementById('file-upload-section');
-            const uploadSuccessSection = document.getElementById('upload-success-section');
             const flashcardSection = document.getElementById('flashcard-section');
             const flashcard = document.getElementById('flashcard');
             const flashcardContainer = document.getElementById('flashcard-container');
@@ -280,7 +279,6 @@
             const currentFilenameDisplay = document.getElementById('current-filename-display');
             const loadNewFileButton = document.getElementById('load-new-file-button');
             const startLearningButton = document.getElementById('start-learning-button');
-            const uploadedFileNameDisplay = document.getElementById('uploaded-file-name');
             const uploadErrorMessage = document.getElementById('upload-error-message');
 
             let words = [];
@@ -404,36 +402,27 @@
                     try {
                         const text = e.target.result;
                         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                        
+                        const parsedData = Papa.parse(text, {
+                            header: false,
+                            skipEmptyLines: true,
+                            trimHeaders: true,
+                            dynamicTyping: false
+                        }).data;
+                        
+                        // Check if the first line is a valid header
+                        if (parsedData.length > 0 && parsedData[0][0].toLowerCase() === '단어') {
+                            parsedData.shift(); // Remove header row
+                        }
 
-                        // Updated parsing logic to handle potential empty lines and format issues
-                        // Changed parsing to correctly handle commas inside quoted strings.
-                        words = lines.slice(1).map(line => {
-                            const parts = [];
-                            let inQuote = false;
-                            let currentPart = '';
-                            
-                            for (let i = 0; i < line.length; i++) {
-                                const char = line[i];
-                                if (char === '"') {
-                                    inQuote = !inQuote;
-                                } else if (char === ',' && !inQuote) {
-                                    parts.push(currentPart.trim());
-                                    currentPart = '';
-                                } else {
-                                    currentPart += char;
-                                }
-                            }
-                            parts.push(currentPart.trim());
-                            
-                            // Ensure all 5 required parts are present and the word is not empty
-                            if (parts.length >= 5 && parts[0].trim() !== '') {
-                                const [word, category, meaning, example1, example2] = parts;
+                        words = parsedData.map(row => {
+                            if (row.length >= 5 && row[0].trim() !== '') {
                                 return {
-                                    word: word.trim(),
-                                    category: category.trim(),
-                                    meaning: meaning.trim(),
-                                    example1: example1.trim(),
-                                    example2: example2.trim()
+                                    word: row[0].trim(),
+                                    category: row[1].trim(),
+                                    meaning: row[2].trim(),
+                                    example1: row[3].trim(),
+                                    example2: row[4].trim()
                                 };
                             }
                             return null;
@@ -443,7 +432,6 @@
                             currentFileName = file.name;
                             memorizedWords.clear();
                             history = [];
-                            uploadedFileNameDisplay.textContent = file.name;
                             showMessage('단어장 업로드가 완료되었습니다!');
                             // Enable the start learning button on successful file upload
                             startLearningButton.disabled = false;
@@ -747,7 +735,7 @@
                 if (startLearningButton.disabled) {
                     return;
                 }
-                uploadSuccessSection.classList.add('hidden');
+                fileUploadSection.classList.add('hidden');
                 flashcardSection.classList.remove('hidden');
                 const firstIndex = getRandomUnmemorizedWord();
                 if (firstIndex !== null) {
