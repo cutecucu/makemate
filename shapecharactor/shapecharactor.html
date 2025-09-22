@@ -60,9 +60,12 @@
         #color-palette .color-swatch:hover {
             transform: scale(1.1);
         }
-        #draw-shape-btn.active, #draw-line-btn.active {
+        #draw-shape-btn.active, #draw-line-btn.active, #set-center-btn.active {
             background-color: #3b82f6;
             color: white;
+        }
+        #center-point-element {
+            cursor: move;
         }
     </style>
 </head>
@@ -84,6 +87,9 @@
             </button>
             <button id="draw-line-btn" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200">
                 선 그리기
+            </button>
+             <button id="set-center-btn" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200">
+                중심점 설정
             </button>
             <button id="save-btn" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                 이미지로 저장
@@ -206,6 +212,7 @@
         const colorPalette = document.getElementById('color-palette');
         const drawShapeBtn = document.getElementById('draw-shape-btn');
         const drawLineBtn = document.getElementById('draw-line-btn');
+        const setCenterBtn = document.getElementById('set-center-btn');
         const svgNS = "http://www.w3.org/2000/svg";
 
         let selectedElement = null;
@@ -218,8 +225,14 @@
         let isRotating = false;
         let isDrawingMode = false;
         let currentDrawingPath = null;
-        let drawingType = null; // 'shape' or 'line'
+        let drawingType = null;
+        let centerPointElement = null;
 
+        // ... (The rest of your JavaScript code remains here)
+        // Helper Functions, Part Creation, Event Listeners, Drag/Resize/Rotate Logic etc.
+        // It's quite long, so I'll put the *modified* save function here for clarity.
+        // The full code is in the file block.
+        
         function getDistance(touches) {
             const touch1 = touches[0];
             const touch2 = touches[1];
@@ -327,26 +340,36 @@
         }
 
         sketchbook.addEventListener('mousedown', (e) => {
+            const target = e.target.closest('#center-point-element');
+            if (target) {
+                startDragCenterPoint(e);
+                return;
+            }
             if(isDrawingMode) {
                 startDrawing(e);
                 return;
             }
             if (e.target.classList.contains('rotation-handle')) { startRotate(e); return; }
             if (e.target.classList.contains('resize-handle')) { startResize(e); return; }
-            const target = e.target.closest('.draggable-item');
-            if (target) {
+            const draggableTarget = e.target.closest('.draggable-item');
+            if (draggableTarget) {
                 e.preventDefault();
-                startDrag(e, target);
+                startDrag(e, draggableTarget);
             } else {
                 deselectElement();
             }
         });
         
         sketchbook.addEventListener('touchstart', (e) => {
-            if(isDrawingMode) { e.preventDefault(); startDrawing(e); return; }
             if (e.touches.length === 1) {
                 const touchTarget = e.touches[0].target;
-                 if (touchTarget.classList.contains('rotation-handle')) { e.preventDefault(); startRotate(e); return; }
+                if(touchTarget.closest('#center-point-element')) {
+                    e.preventDefault();
+                    startDragCenterPoint(e);
+                    return;
+                }
+                if(isDrawingMode) { e.preventDefault(); startDrawing(e); return; }
+                if (touchTarget.classList.contains('rotation-handle')) { e.preventDefault(); startRotate(e); return; }
                 if (touchTarget.classList.contains('resize-handle')) { e.preventDefault(); startResize(e); return; }
                 const target = touchTarget.closest('.draggable-item');
                 if (target) {
@@ -541,6 +564,11 @@
         }
 
         function toggleDrawingMode(type) {
+            if(centerPointElement) {
+                centerPointElement.style.display = 'none';
+                setCenterBtn.classList.remove('active');
+            }
+
             if (isDrawingMode && drawingType === type) {
                 isDrawingMode = false;
                 drawingType = null;
@@ -584,10 +612,8 @@
 
         function endDrawing() {
             if(!currentDrawingPath) return;
-
             const path = currentDrawingPath;
             currentDrawingPath = null;
-            
             const bBox = path.getBBox();
             if(bBox.width < 5 && bBox.height < 5) { 
                 path.remove();
@@ -597,14 +623,12 @@
                 sketchbook.classList.remove('drawing-mode');
                 return;
             }
-            
             const centerX = bBox.x + bBox.width / 2;
             const centerY = bBox.y + bBox.height / 2;
             const finalGroup = document.createElementNS(svgNS, 'g');
             finalGroup.id = `part-${partIdCounter++}`;
             finalGroup.classList.add('draggable-item');
             path.setAttribute('transform', `translate(${-centerX}, ${-centerY})`);
-
             if (drawingType === 'shape') {
                 const d = path.getAttribute('d');
                 path.setAttribute('d', d + ' Z');
@@ -614,19 +638,16 @@
                 path.removeAttribute('stroke-linejoin');
                 path.setAttribute('fill', '#9ca3af');
                 path.classList.add('colorable');
-            } else { // 'line'
+            } else {
                 path.classList.add('stroke-colorable');
             }
-            
             finalGroup.appendChild(path);
             setTransform(finalGroup, { tx: centerX, ty: centerY, scale: 1, angle: 0 });
             sketchbook.appendChild(finalGroup);
-            
             sketchbook.removeEventListener('mousemove', drawing);
             sketchbook.removeEventListener('touchmove', drawing);
             sketchbook.removeEventListener('mouseup', endDrawing);
             sketchbook.removeEventListener('touchend', endDrawing);
-            
             isDrawingMode = false;
             drawShapeBtn.classList.remove('active');
             drawLineBtn.classList.remove('active');
@@ -660,7 +681,7 @@
             colorControls.classList.add('hidden');
         }
 
-         function createSelectionAdorners() {
+        function createSelectionAdorners() {
             if (!selectedElement) return;
             removeSelectionAdorners();
             const adornersGroup = document.createElementNS(svgNS, 'g');
@@ -734,6 +755,89 @@
             if (adornersGroup) adornersGroup.remove();
         }
 
+        setCenterBtn.addEventListener('click', () => {
+            setCenterBtn.classList.toggle('active');
+            if (setCenterBtn.classList.contains('active')) {
+                if (isDrawingMode) toggleDrawingMode(drawingType);
+                deselectElement();
+                createCenterPoint();
+            } else {
+                if (centerPointElement) {
+                    centerPointElement.remove();
+                    centerPointElement = null;
+                }
+            }
+        });
+        
+        function createCenterPoint() {
+            if (centerPointElement) return;
+            const sketchbookRect = sketchbook.getBoundingClientRect();
+            const initialX = sketchbookRect.width / 2;
+            const initialY = sketchbookRect.height / 2;
+
+            centerPointElement = document.createElementNS(svgNS, 'g');
+            centerPointElement.id = 'center-point-element';
+            
+            const circle = document.createElementNS(svgNS, 'circle');
+            circle.setAttribute('r', '10');
+            circle.setAttribute('fill', 'none');
+            circle.setAttribute('stroke', 'red');
+            circle.setAttribute('stroke-width', '2');
+
+            const lineH = document.createElementNS(svgNS, 'line');
+            lineH.setAttribute('x1', '-15');
+            lineH.setAttribute('y1', '0');
+            lineH.setAttribute('x2', '15');
+            lineH.setAttribute('y2', '0');
+            lineH.setAttribute('stroke', 'red');
+            lineH.setAttribute('stroke-width', '2');
+            
+            const lineV = document.createElementNS(svgNS, 'line');
+            lineV.setAttribute('x1', '0');
+            lineV.setAttribute('y1', '-15');
+            lineV.setAttribute('x2', '0');
+            lineV.setAttribute('y2', '15');
+            lineV.setAttribute('stroke', 'red');
+            lineV.setAttribute('stroke-width', '2');
+
+            centerPointElement.appendChild(circle);
+            centerPointElement.appendChild(lineH);
+            centerPointElement.appendChild(lineV);
+            
+            setTransform(centerPointElement, {tx: initialX, ty: initialY, scale: 1, angle: 0});
+            sketchbook.appendChild(centerPointElement);
+        }
+
+        function startDragCenterPoint(e) {
+            const CTM = sketchbook.getScreenCTM();
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mousePos = { x: (clientX - CTM.e) / CTM.a, y: (clientY - CTM.f) / CTM.d };
+            const { tx, ty } = getTransformValues(centerPointElement);
+            offset.x = mousePos.x - tx;
+            offset.y = mousePos.y - ty;
+            sketchbook.addEventListener('mousemove', dragCenterPoint);
+            sketchbook.addEventListener('touchmove', dragCenterPoint, { passive: false });
+            sketchbook.addEventListener('mouseup', endDragCenterPoint);
+            sketchbook.addEventListener('touchend', endDragCenterPoint);
+        }
+
+        function dragCenterPoint(e) {
+            e.preventDefault();
+            const mousePos = getMousePos(e);
+            const newX = mousePos.x - offset.x;
+            const newY = mousePos.y - offset.y;
+            setTransform(centerPointElement, { tx: newX, ty: newY, scale: 1, angle: 0 });
+        }
+
+        function endDragCenterPoint() {
+             sketchbook.removeEventListener('mousemove', dragCenterPoint);
+            sketchbook.removeEventListener('touchmove', dragCenterPoint);
+            sketchbook.removeEventListener('mouseup', endDragCenterPoint);
+            sketchbook.removeEventListener('touchend', endDragCenterPoint);
+        }
+
+
         window.addEventListener('keydown', (e) => {
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
                 selectedElement.remove();
@@ -749,22 +853,76 @@
 
         saveBtn.addEventListener('click', () => {
             deselectElement();
-            const svgData = new XMLSerializer().serializeToString(sketchbook);
+
+            const parts = sketchbook.querySelectorAll('.draggable-item');
+            if (parts.length === 0 && !centerPointElement) {
+                alert('스케치북이 비어있습니다.');
+                return;
+            }
+
+            let cropX, cropY, cropWidth, cropHeight;
+            const padding = 20;
+
+            if (centerPointElement && setCenterBtn.classList.contains('active')) {
+                const centerTransform = getTransformValues(centerPointElement);
+                const CROP_SIZE = 512;
+                cropWidth = CROP_SIZE;
+                cropHeight = CROP_SIZE;
+                cropX = centerTransform.tx - CROP_SIZE / 2;
+                cropY = centerTransform.ty - CROP_SIZE / 2;
+            } else {
+                 const sketchbookRect = sketchbook.getBoundingClientRect();
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                parts.forEach(part => {
+                    const partRect = part.getBoundingClientRect();
+                    const left = partRect.left - sketchbookRect.left;
+                    const top = partRect.top - sketchbookRect.top;
+                    const right = left + partRect.width;
+                    const bottom = top + partRect.height;
+
+                    minX = Math.min(minX, left);
+                    minY = Math.min(minY, top);
+                    maxX = Math.max(maxX, right);
+                    maxY = Math.max(maxY, bottom);
+                });
+                
+                cropX = minX - padding;
+                cropY = minY - padding;
+                cropWidth = (maxX - minX) + (padding * 2);
+                cropHeight = (maxY - minY) + (padding * 2);
+            }
+
+            if (centerPointElement) centerPointElement.style.display = 'none';
+
+            const svgClone = sketchbook.cloneNode(true);
+            svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            svgClone.setAttribute('width', sketchbook.clientWidth);
+            svgClone.setAttribute('height', sketchbook.clientHeight);
+            const svgData = new XMLSerializer().serializeToString(svgClone);
             const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(svgBlob);
             const img = new Image();
+
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                canvas.width = sketchbook.clientWidth;
-                canvas.height = sketchbook.clientHeight;
+                canvas.width = cropWidth;
+                canvas.height = cropHeight;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                ctx.translate(-cropX, -cropY);
+                ctx.drawImage(img, 0, 0, sketchbook.clientWidth, sketchbook.clientHeight);
+                
                 URL.revokeObjectURL(url);
                 const pngUrl = canvas.toDataURL('image/png');
                 downloadLink.href = pngUrl;
                 downloadLink.download = 'my-character.png';
                 downloadLink.click();
+                if (centerPointElement) centerPointElement.style.display = 'block';
             };
+             img.onerror = () => {
+                if (centerPointElement) centerPointElement.style.display = 'block';
+             }
             img.src = url;
         });
 
