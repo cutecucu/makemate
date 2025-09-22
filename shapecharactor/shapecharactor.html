@@ -227,11 +227,6 @@
         let currentDrawingPath = null;
         let drawingType = null;
         let centerPointElement = null;
-
-        // ... (The rest of your JavaScript code remains here)
-        // Helper Functions, Part Creation, Event Listeners, Drag/Resize/Rotate Logic etc.
-        // It's quite long, so I'll put the *modified* save function here for clarity.
-        // The full code is in the file block.
         
         function getDistance(touches) {
             const touch1 = touches[0];
@@ -770,7 +765,10 @@
         });
         
         function createCenterPoint() {
-            if (centerPointElement) return;
+            if (centerPointElement) {
+                centerPointElement.style.display = 'block';
+                return;
+            };
             const sketchbookRect = sketchbook.getBoundingClientRect();
             const initialX = sketchbookRect.width / 2;
             const initialY = sketchbookRect.height / 2;
@@ -855,7 +853,7 @@
             deselectElement();
 
             const parts = sketchbook.querySelectorAll('.draggable-item');
-            if (parts.length === 0 && !centerPointElement) {
+            if (parts.length === 0) {
                 alert('스케치북이 비어있습니다.');
                 return;
             }
@@ -863,30 +861,36 @@
             let cropX, cropY, cropWidth, cropHeight;
             const padding = 20;
 
+            const sketchbookRect = sketchbook.getBoundingClientRect();
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            parts.forEach(part => {
+                const partRect = part.getBoundingClientRect();
+                const left = partRect.left - sketchbookRect.left;
+                const top = partRect.top - sketchbookRect.top;
+                const right = left + partRect.width;
+                const bottom = top + partRect.height;
+
+                minX = Math.min(minX, left);
+                minY = Math.min(minY, top);
+                maxX = Math.max(maxX, right);
+                maxY = Math.max(maxY, bottom);
+            });
+
             if (centerPointElement && setCenterBtn.classList.contains('active')) {
                 const centerTransform = getTransformValues(centerPointElement);
-                const CROP_SIZE = 512;
-                cropWidth = CROP_SIZE;
-                cropHeight = CROP_SIZE;
-                cropX = centerTransform.tx - CROP_SIZE / 2;
-                cropY = centerTransform.ty - CROP_SIZE / 2;
-            } else {
-                 const sketchbookRect = sketchbook.getBoundingClientRect();
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                const centerX = centerTransform.tx;
+                const centerY = centerTransform.ty;
 
-                parts.forEach(part => {
-                    const partRect = part.getBoundingClientRect();
-                    const left = partRect.left - sketchbookRect.left;
-                    const top = partRect.top - sketchbookRect.top;
-                    const right = left + partRect.width;
-                    const bottom = top + partRect.height;
+                const halfWidth = Math.max(centerX - minX, maxX - centerX);
+                const halfHeight = Math.max(centerY - minY, maxY - centerY);
 
-                    minX = Math.min(minX, left);
-                    minY = Math.min(minY, top);
-                    maxX = Math.max(maxX, right);
-                    maxY = Math.max(maxY, bottom);
-                });
+                cropWidth = halfWidth * 2 + padding * 2;
+                cropHeight = halfHeight * 2 + padding * 2;
+                cropX = centerX - halfWidth - padding;
+                cropY = centerY - halfHeight - padding;
                 
+            } else {
                 cropX = minX - padding;
                 cropY = minY - padding;
                 cropWidth = (maxX - minX) + (padding * 2);
