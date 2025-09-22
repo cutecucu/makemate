@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>나만의 캐릭터 파츠 만들기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            touch-action: none;
+        }
+        #sketchbook {
+            background-color: #f9fafb;
+            border: 2px dashed #d1d5db;
+            cursor: default;
+            overflow: hidden;
+        }
+        #sketchbook.drawing-mode {
+            cursor: crosshair;
+        }
+        .part-item {
+            cursor: grab;
+            transition: transform 0.1s ease-in-out, box-shadow 0.1s;
+        }
+        .part-item:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        .draggable-item {
+            cursor: move;
+        }
+        .selection-box {
+            fill: none;
+            stroke: #3b82f6;
+            stroke-width: 2px;
+            stroke-dasharray: 6 4;
+        }
+        .resize-handle {
+            fill: #3b82f6;
+            stroke: white;
+            stroke-width: 2px;
+        }
+        .rotation-handle {
+            fill: #f59e0b;
+            stroke: white;
+            stroke-width: 2px;
+            cursor: alias;
+        }
+        .rotation-line {
+            stroke: #a1a1aa;
+            stroke-width: 2px;
+        }
+        #color-palette .color-swatch {
+            transition: transform 0.1s ease-in-out;
+        }
+        #color-palette .color-swatch:hover {
+            transform: scale(1.1);
+        }
+        #draw-shape-btn.active, #draw-line-btn.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-lg p-6 flex flex-col">
+        <header class="text-center mb-4">
+            <h1 class="text-3xl font-bold text-gray-800">나만의 캐릭터 파츠 만들기</h1>
+            <p class="text-gray-500 mt-1">아래 파츠를 클릭해 추가하고, 스케치북에서 움직이고 크기를 조절해보세요!</p>
+        </header>
+
+        <main class="w-full h-[500px] md:h-[600px] my-4 rounded-lg shadow-inner">
+            <svg id="sketchbook" width="100%" height="100%"></svg>
+        </main>
+
+        <div class="flex justify-center flex-wrap gap-4 mb-6">
+            <button id="draw-shape-btn" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200">
+                면 그리기
+            </button>
+            <button id="draw-line-btn" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200">
+                선 그리기
+            </button>
+            <button id="save-btn" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                이미지로 저장
+            </button>
+            <button id="clear-btn" class="px-6 py-3 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-all duration-200">
+                모두 지우기
+            </button>
+            <a id="download-link" style="display: none;"></a>
+        </div>
+        
+        <div id="color-controls" class="hidden my-4 p-4 bg-gray-100 rounded-lg">
+            <h3 class="font-semibold text-gray-700 mb-3 text-center">색상 변경</h3>
+            <div id="color-palette" class="flex flex-wrap gap-3 justify-center">
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #f97316;" data-color="#f97316"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #fde047;" data-color="#fde047"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #4ade80;" data-color="#4ade80"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #38bdf8;" data-color="#38bdf8"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #60a5fa;" data-color="#60a5fa"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #a78bfa;" data-color="#a78bfa"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #f472b6;" data-color="#f472b6"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #a16207;" data-color="#a16207"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #f9fafb;" data-color="#f9fafb"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #9ca3af;" data-color="#9ca3af"></div>
+                <div class="color-swatch w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: #1f2937;" data-color="#1f2937"></div>
+            </div>
+        </div>
+
+        <footer id="parts-palette" class="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-y-auto" style="max-height: 250px;">
+            <div id="palette-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 도형 파츠 -->
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-gray-700">도형</h3>
+                    <div class="flex flex-wrap gap-4 items-center" data-category="shapes">
+                        <div class="part-item w-16 h-16 bg-blue-300 rounded-xl" data-shape="rect-round"></div>
+                        <div class="part-item w-16 h-16 bg-yellow-300 rounded-full" data-shape="circle"></div>
+                        <div class="part-item w-24 h-12 bg-green-300 rounded-full" data-shape="capsule"></div>
+                        <svg class="part-item" data-shape="triangle-round" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M 50,10 L 90,90 L 10,90 Z" fill="#fb923c"/></svg>
+                        <svg class="part-item" data-shape="star-round" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M50 2l11 35h37l-30 22 11 36-30-22-29 22 12-36-30-22h37z" fill="#facc15"/></svg>
+                        <svg class="part-item" data-shape="heart" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M50 85 C-20 40, 25 -10, 50 20 C75 -10, 120 40, 50 85 Z" fill="#ef4444"/></svg>
+                        <svg class="part-item" data-shape="hexagon-round" width="64" height="60" viewBox="0 0 100 87"><path class="colorable" d="M25 0 L75 0 L100 43.5 L75 87 L25 87 L0 43.5 Z" fill="#60a5fa"/></svg>
+                        <svg class="part-item" data-shape="half-circle" width="64" height="32" viewBox="0 0 100 50"><path class="colorable" d="M0 50 A50 50 0 0 1 100 50 Z" fill="#34d399"/></svg>
+                        <svg class="part-item" data-shape="rhombus-round" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M50 0 L100 50 L50 100 L0 50 Z" fill="#a78bfa"/></svg>
+                        <svg class="part-item" data-shape="pentagon-round" width="64" height="64" viewBox="0 0 100 95"><path class="colorable" d="M50 0 L100 38 L82 95 L18 95 L0 38 Z" fill="#f472b6"/></svg>
+                        <svg class="part-item" data-shape="octagon-round" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M30 0 L70 0 L100 30 L100 70 L70 100 L30 100 L0 70 L0 30 Z" fill="#22d3ee"/></svg>
+                        <svg class="part-item" data-shape="cross-round" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M30 0 L70 0 L70 30 L100 30 L100 70 L70 70 L70 100 L30 100 L30 70 L0 70 L0 30 L30 30 Z" fill="#f87171"/></svg>
+                        <svg class="part-item" data-shape="arrow-round" width="64" height="48" viewBox="0 0 100 75"><path class="colorable" d="M0 25 L50 25 L50 0 L100 37.5 L50 75 L50 50 L0 50 Z" fill="#4ade80"/></svg>
+                        <svg class="part-item" data-shape="moon" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M50 0 A50 50 0 1 0 50 100 A40 40 0 1 1 50 0 Z" fill="#fde047"/></svg>
+                        <svg class="part-item" data-shape="cloud" width="64" height="48" viewBox="0 0 100 60"><path class="colorable" d="M15 60 Q5 40 25 35 Q30 10 55 25 Q75 15 85 35 Q105 45 90 60 Z" fill="#93c5fd"/></svg>
+                        <svg class="part-item" data-shape="drop" width="48" height="64" viewBox="0 0 75 100"><path class="colorable" d="M37.5 0 C0 0 0 60 37.5 100 C75 60 75 0 37.5 0 Z" fill="#38bdf8"/></svg>
+                        <svg class="part-item" data-shape="speech-bubble" width="64" height="56" viewBox="0 0 100 88"><path class="colorable" d="M0 10 C0 4.477 4.477 0 10 0 L90 0 C95.523 0 100 4.477 100 10 L100 60 C100 65.523 95.523 70 90 70 L30 70 L15 88 L20 70 L10 70 C4.477 70 0 65.523 0 60 Z" fill="#e5e7eb"/></svg>
+                        <svg class="part-item" data-shape="donut" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" fill-rule="evenodd" d="M 50, 0 a 50,50 0 1,0 0,100 a 50,50 0 1,0 0,-100 z M 50,20 a 30,30 0 1,1 0,60 a 30,30 0 1,1 0,-60 z" fill="#f9a8d4"/></svg>
+                        <svg class="part-item" data-shape="blob" width="64" height="60" viewBox="0 0 100 94"><path class="colorable" d="M85.3,62.3c9.9,20.5-12.8,32.3-30.6,31.2c-17.8-1.1-29-20.5-23.5-38.3c5.5-17.8,29.9-19.8,42.5-13.3 C86.4,48.4,75.4,41.7,85.3,62.3z" fill="#c4b5fd"/></svg>
+                        <div class="part-item w-16 h-12 bg-teal-300" style="clip-path: polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%); border-radius: 8px;" data-shape="trapezoid-round"></div>
+                    </div>
+                </div>
+                <!-- 선 파츠 -->
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-gray-700">선</h3>
+                    <div class="flex flex-wrap gap-4 items-center" data-category="lines">
+                        <svg class="part-item" data-shape="line-curved" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 80 Q 50 20 90 80" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-zigzag" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 L 30 25 L 50 75 L 70 25 L 90 50" stroke="black" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg class="part-item" data-shape="line-check" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M20 50 L 45 75 L 80 25" stroke="green" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg class="part-item" data-shape="line-pig-tail" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M20,50 C20,20 80,20 80,50 C80,80 20,80 20,50 C20,35 65,35 65,50 C65,65 35,65 35,50" stroke="#f472b6" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-wavy" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 C 30 20, 50 80, 70 20, 90 50" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-dashed" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 L 90 50" stroke="black" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="15, 10"/></svg>
+                        <svg class="part-item" data-shape="line-spiral" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M50 50 m0 -40 a40 40 0 1 1 0 80 a30 30 0 1 0 0 -60 a20 20 0 1 1 0 40 a10 10 0 1 0 0 -20" stroke="black" stroke-width="5" fill="none"/></svg>
+                        <svg class="part-item" data-shape="line-dotted" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 L 90 50" stroke="black" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="2, 12"/></svg>
+                        <svg class="part-item" data-shape="line-double" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 40 L 90 40 M10 60 L 90 60" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-scribble" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 C20 20, 30 80, 40 50 S60 20, 70 50 S80 80, 90 50" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-lightning" width="64" height="64" viewBox="0 0 100 100"><path class="colorable" d="M40 0 L20 50 L45 50 L30 100 L80 40 L55 40 Z" fill="#fef08a"/></svg>
+                        <svg class="part-item" data-shape="line-stitched" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 L 90 50" stroke="#a16207" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="15, 10, 2, 10"/></svg>
+                        <svg class="part-item" data-shape="line-looped" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 C10 30, 30 30, 30 50 C30 70, 50 70, 50 50 C50 30, 70 30, 70 50 C70 70, 90 70, 90 50" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-spring" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 L 20 50 C25 25, 35 75, 40 50 C45 25, 55 75, 60 50 C65 25, 75 75, 80 50 L 90 50" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="line-heartbeat" width="64" height="64" viewBox="0 0 100 100"><path class="stroke-colorable" d="M10 50 L 30 50 L 35 40 L 45 60 L 50 50 L 55 55 L 60 50 L 90 50" stroke="red" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg class="part-item" data-shape="mouth-smile" width="64" height="32" viewBox="0 0 100 50"><path class="stroke-colorable" d="M10 20 Q 50 50 90 20" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="mouth-sad" width="64" height="32" viewBox="0 0 100 50"><path class="stroke-colorable" d="M10 30 Q 50 0 90 30" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="mouth-open" width="64" height="40" viewBox="0 0 100 60"><path class="colorable" d="M10 20 Q 50 60 90 20 Z" fill="black"/></svg>
+                        <svg class="part-item" data-shape="mouth-straight" width="64" height="32" viewBox="0 0 100 50"><path class="stroke-colorable" d="M10 25 L 90 25" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="mustache" width="64" height="32" viewBox="0 0 100 50"><path class="colorable" d="M5 25 C 20 0, 30 0, 50 25 C 70 0, 80 0, 95 25" fill="black"/></svg>
+                    </div>
+                </div>
+                <!-- 눈 파츠 -->
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-gray-700">눈</h3>
+                    <div class="flex flex-wrap gap-4 items-center" data-category="eyes">
+                        <svg class="part-item" data-shape="eye-basic" width="40" height="40" viewBox="0 0 60 60"><g><circle class="colorable" cx="30" cy="30" r="15" fill="black"/><circle cx="35" cy="25" r="5" fill="white"/></g></svg>
+                        <svg class="part-item" data-shape="eye-closed" width="40" height="40" viewBox="0 0 60 60"><g><path class="stroke-colorable" d="M10 30 Q 30 45 50 30" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></g></svg>
+                        <svg class="part-item" data-shape="eye-surprised" width="40" height="40" viewBox="0 0 60 60"><g><circle class="colorable" cx="30" cy="30" r="20" fill="white"/><circle class="colorable" cx="30" cy="30" r="8" fill="black"/></g></svg>
+                        <svg class="part-item" data-shape="eye-wink" width="40" height="40" viewBox="0 0 60 60"><g><path class="stroke-colorable" d="M10 30 Q 30 15 50 30" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></g></svg>
+                        <svg class="part-item" data-shape="eye-sparkle" width="40" height="40" viewBox="0 0 60 60"><g><circle class="colorable" cx="30" cy="30" r="15" fill="black"/><path d="M25 20 L30 15 L35 20 L40 25 L35 30 L30 35 L25 30 Z" fill="white"/><circle cx="40" cy="35" r="3" fill="white"/></g></svg>
+                        <svg class="part-item" data-shape="eye-angry" width="40" height="40" viewBox="0 0 60 60"><path class="stroke-colorable" d="M10 40 L50 20" stroke="black" stroke-width="6" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="eye-dizzy" width="40" height="40" viewBox="0 0 60 60"><path class="stroke-colorable" d="M15 15 L45 45 M45 15 L15 45" stroke="black" stroke-width="6" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="eye-crying" width="40" height="48" viewBox="0 0 60 72"><path class="stroke-colorable" d="M10 30 Q 30 45 50 30" stroke="black" stroke-width="5" fill="none" /><path class="colorable" d="M30 35 C20 50, 20 60, 30 70 C40 60, 40 50, 30 35 Z" fill="#3b82f6"/></svg>
+                        <svg class="part-item" data-shape="eye-heart" width="40" height="40" viewBox="0 0 60 60"><path class="colorable" d="M30 50 C-10 20, 15 -10, 30 10 C45 -10, 70 20, 30 50 Z" fill="#ef4444"/></svg>
+                        <svg class="part-item" data-shape="eye-side" width="40" height="40" viewBox="0 0 60 60"><circle class="colorable" cx="30" cy="30" r="18" fill="white"/><circle class="colorable" cx="40" cy="30" r="8" fill="black"/></svg>
+                        <svg class="part-item" data-shape="eye-sleepy" width="40" height="40" viewBox="0 0 60 60"><path class="stroke-colorable" d="M10 35 L50 35" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="eye-skeptical" width="40" height="40" viewBox="0 0 60 60"><circle class="colorable" cx="30" cy="30" r="10" fill="black"/><path class="stroke-colorable" d="M10 20 Q 30 10 50 20" stroke="black" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                        <svg class="part-item" data-shape="eye-scared" width="40" height="40" viewBox="0 0 60 60"><circle class="colorable" cx="30" cy="30" r="20" fill="white"/><circle class="colorable" cx="30" cy="30" r="12" fill="black"/><circle cx="33" cy="27" r="4" fill="white"/></svg>
+                        <svg class="part-item" data-shape="eye-cute" width="40" height="40" viewBox="0 0 60 60"><circle class="colorable" cx="30" cy="30" r="25" fill="black"/><circle cx="22" cy="22" r="8" fill="white"/><circle cx="38" cy="38" r="4" fill="white"/></svg>
+                        <svg class="part-item" data-shape="eye-robot" width="40" height="40" viewBox="0 0 60 60"><rect class="colorable" x="10" y="10" width="40" height="40" fill="black" rx="5"/><rect class="colorable" x="25" y="25" width="10" height="10" fill="red"/></svg>
+                        <svg class="part-item" data-shape="eye-cat" width="40" height="40" viewBox="0 0 60 60"><ellipse class="colorable" cx="30" cy="30" rx="25" ry="20" fill="yellow"/><ellipse class="colorable" cx="30" cy="30" rx="5" ry="18" fill="black"/></svg>
+                        <svg class="part-item" data-shape="eye-spiral" width="40" height="40" viewBox="0 0 60 60"><path class="stroke-colorable" d="M30 30 m0 -25 a25 25 0 1 1 0 50 a20 20 0 1 0 0 -40 a15 15 0 1 1 0 30 a10 10 0 1 0 0 -20 a5 5 0 1 1 0 10" stroke="black" stroke-width="4" fill="none"/></svg>
+                        <svg class="part-item" data-shape="eye-starry" width="40" height="40" viewBox="0 0 60 60"><path class="colorable" d="M30 5 L37 23 L56 23 L41 35 L48 53 L30 42 L12 53 L19 35 L4 23 L23 23 Z" fill="yellow"/></svg>
+                        <svg class="part-item" data-shape="eye-no-pupil" width="40" height="40" viewBox="0 0 60 60"><circle class="colorable" cx="30" cy="30" r="20" fill="white"/></svg>
+                        <svg class="part-item" data-shape="eye-brow" width="40" height="20" viewBox="0 0 60 30"><path class="stroke-colorable" d="M10 25 Q 30 5 50 25" stroke="black" stroke-width="8" fill="none" stroke-linecap="round"/></svg>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const sketchbook = document.getElementById('sketchbook');
+        const palette = document.getElementById('parts-palette');
+        const saveBtn = document.getElementById('save-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const downloadLink = document.getElementById('download-link');
+        const colorControls = document.getElementById('color-controls');
+        const colorPalette = document.getElementById('color-palette');
+        const drawShapeBtn = document.getElementById('draw-shape-btn');
+        const drawLineBtn = document.getElementById('draw-line-btn');
+        const svgNS = "http://www.w3.org/2000/svg";
+
+        let selectedElement = null;
+        let offset = { x: 0, y: 0 };
+        let partIdCounter = 0;
+        
+        let isPinching = false;
+        let initialPinchDistance = 0;
+        let isResizing = false;
+        let isRotating = false;
+        let isDrawingMode = false;
+        let currentDrawingPath = null;
+        let drawingType = null; // 'shape' or 'line'
+
+        function getDistance(touches) {
+            const touch1 = touches[0];
+            const touch2 = touches[1];
+            return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        }
+
+        function getTransformValues(element) {
+            const transformAttr = element.getAttribute('transform') || '';
+            let tx = 0, ty = 0, scale = 1, angle = 0;
+            const translateMatch = transformAttr.match(/translate\(([^,]+),([^)]+)\)/);
+            if (translateMatch) {
+                tx = parseFloat(translateMatch[1]);
+                ty = parseFloat(translateMatch[2]);
+            }
+            const rotateMatch = transformAttr.match(/rotate\(([^)]+)\)/);
+            if (rotateMatch) {
+                angle = parseFloat(rotateMatch[1]);
+            }
+            const scaleMatch = transformAttr.match(/scale\(([^)]+)\)/);
+            if (scaleMatch) {
+                scale = parseFloat(scaleMatch[1]);
+            }
+            return { tx, ty, scale, angle };
+        }
+        
+        function setTransform(element, { tx, ty, scale, angle }) {
+            let transformString = `translate(${tx}, ${ty}) rotate(${angle}) scale(${scale})`;
+            element.setAttribute('transform', transformString);
+        }
+        
+        function getMousePos(e) {
+            const CTM = sketchbook.getScreenCTM();
+             const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            return { x: (clientX - CTM.e) / CTM.a, y: (clientY - CTM.f) / CTM.d };
+        }
+
+        palette.addEventListener('click', (e) => {
+            const originalPart = e.target.closest('.part-item');
+            if (!originalPart) return;
+            e.preventDefault();
+            const newPart = createPartFromPalette(originalPart);
+            if (!newPart) return;
+            const sketchbookRect = sketchbook.getBoundingClientRect();
+            const initialX = sketchbookRect.width / 2;
+            const initialY = sketchbookRect.height / 2;
+            setTransform(newPart, { tx: initialX, ty: initialY, scale: 1, angle: 0 });
+            sketchbook.appendChild(newPart);
+            selectElement(newPart);
+        });
+
+        function createPartFromPalette(originalPart) {
+            const partId = `part-${partIdCounter++}`;
+            if (originalPart.tagName.toLowerCase() !== 'svg') {
+                const svgWrapper = document.createElementNS(svgNS, 'g');
+                svgWrapper.id = partId;
+                svgWrapper.classList.add('draggable-item');
+                const shape = document.createElementNS(svgNS, 'rect');
+                shape.classList.add('colorable');
+                const styles = getComputedStyle(originalPart);
+                const width = parseFloat(styles.width);
+                const height = parseFloat(styles.height);
+                shape.setAttribute('x', -width / 2);
+                shape.setAttribute('y', -height / 2);
+                shape.setAttribute('width', width);
+                shape.setAttribute('height', height);
+                shape.setAttribute('fill', styles.backgroundColor);
+                if (originalPart.dataset.shape === 'trapezoid-round') {
+                     shape.style.clipPath = styles.clipPath;
+                     shape.style.borderRadius = styles.borderRadius;
+                } else {
+                    const borderRadius = styles.borderRadius;
+                    if (borderRadius.endsWith('%')) {
+                         shape.setAttribute('rx', Math.min(width, height) / 2);
+                         shape.setAttribute('ry', Math.min(width, height) / 2);
+                    } else {
+                         shape.setAttribute('rx', parseFloat(borderRadius));
+                         shape.setAttribute('ry', parseFloat(borderRadius));
+                    }
+                }
+                svgWrapper.appendChild(shape);
+                return svgWrapper;
+            } 
+            else {
+                const newPart = originalPart.cloneNode(true);
+                const contentGroup = document.createElementNS(svgNS, 'g');
+                while(newPart.firstChild) {
+                    contentGroup.appendChild(newPart.firstChild);
+                }
+                const tempSvg = document.createElementNS(svgNS, 'svg');
+                tempSvg.style.position = 'absolute'; tempSvg.style.visibility = 'hidden';
+                tempSvg.appendChild(contentGroup);
+                document.body.appendChild(tempSvg);
+                const bBox = contentGroup.getBBox();
+                document.body.removeChild(tempSvg);
+                const centerX = bBox.x + bBox.width / 2;
+                const centerY = bBox.y + bBox.height / 2;
+                const finalGroup = document.createElementNS(svgNS, 'g');
+                finalGroup.id = partId;
+                finalGroup.classList.add('draggable-item');
+                contentGroup.setAttribute('transform', `translate(${-centerX}, ${-centerY})`);
+                finalGroup.appendChild(contentGroup);
+                return finalGroup;
+            }
+        }
+
+        sketchbook.addEventListener('mousedown', (e) => {
+            if(isDrawingMode) {
+                startDrawing(e);
+                return;
+            }
+            if (e.target.classList.contains('rotation-handle')) { startRotate(e); return; }
+            if (e.target.classList.contains('resize-handle')) { startResize(e); return; }
+            const target = e.target.closest('.draggable-item');
+            if (target) {
+                e.preventDefault();
+                startDrag(e, target);
+            } else {
+                deselectElement();
+            }
+        });
+        
+        sketchbook.addEventListener('touchstart', (e) => {
+            if(isDrawingMode) { e.preventDefault(); startDrawing(e); return; }
+            if (e.touches.length === 1) {
+                const touchTarget = e.touches[0].target;
+                 if (touchTarget.classList.contains('rotation-handle')) { e.preventDefault(); startRotate(e); return; }
+                if (touchTarget.classList.contains('resize-handle')) { e.preventDefault(); startResize(e); return; }
+                const target = touchTarget.closest('.draggable-item');
+                if (target) {
+                    e.preventDefault();
+                    startDrag(e, target);
+                } else {
+                    deselectElement();
+                }
+            } else if (e.touches.length === 2 && selectedElement) {
+                e.preventDefault();
+                isPinching = true;
+                initialPinchDistance = getDistance(e.touches);
+                const { scale, angle } = getTransformValues(selectedElement);
+                selectedElement.dataset.initialScale = scale;
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const initialPinchAngle = Math.atan2(touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX) * (180 / Math.PI);
+                selectedElement.dataset.initialPinchAngle = initialPinchAngle;
+                selectedElement.dataset.initialAngle = angle;
+            }
+        }, { passive: false });
+        
+        sketchbook.addEventListener('touchmove', (e) => {
+            if (!isPinching || e.touches.length !== 2 || !selectedElement) return;
+            e.preventDefault();
+            const currentDistance = getDistance(e.touches);
+            if (initialPinchDistance === 0) return;
+            const scaleFactor = currentDistance / initialPinchDistance;
+            const initialScale = parseFloat(selectedElement.dataset.initialScale) || 1;
+            let newScale = initialScale * scaleFactor;
+            newScale = Math.max(0.1, newScale);
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentPinchAngle = Math.atan2(touch2.clientY - touch1.clientY, touch2.clientX - touch1.clientX) * (180 / Math.PI);
+            const initialPinchAngle = parseFloat(selectedElement.dataset.initialPinchAngle);
+            const initialAngle = parseFloat(selectedElement.dataset.initialAngle);
+            const angleChange = currentPinchAngle - initialPinchAngle;
+            const newAngle = initialAngle + angleChange;
+            const { tx, ty } = getTransformValues(selectedElement);
+            setTransform(selectedElement, { tx, ty, scale: newScale, angle: newAngle });
+            updateSelectionAdorners();
+        }, { passive: false });
+
+        sketchbook.addEventListener('touchend', (e) => {
+            if (isPinching && e.touches.length < 2) {
+                isPinching = false;
+                if(selectedElement) {
+                    delete selectedElement.dataset.initialScale;
+                    delete selectedElement.dataset.initialAngle;
+                    delete selectedElement.dataset.initialPinchAngle;
+                }
+            }
+        });
+        
+        function startDrag(e, target) {
+            if (isPinching || isResizing || isRotating) return;
+            selectElement(target);
+            const CTM = sketchbook.getScreenCTM();
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mousePos = { x: (clientX - CTM.e) / CTM.a, y: (clientY - CTM.f) / CTM.d };
+            const { tx, ty } = getTransformValues(selectedElement);
+            offset.x = mousePos.x - tx;
+            offset.y = mousePos.y - ty;
+            sketchbook.addEventListener('mousemove', drag);
+            sketchbook.addEventListener('touchmove', drag, { passive: false });
+            sketchbook.addEventListener('mouseup', endDrag);
+            sketchbook.addEventListener('touchend', endDrag);
+            sketchbook.addEventListener('mouseleave', endDrag);
+        }
+
+        function drag(e) {
+            if (!selectedElement || isPinching || isResizing || isRotating) return;
+            e.preventDefault();
+            const CTM = sketchbook.getScreenCTM();
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mousePos = { x: (clientX - CTM.e) / CTM.a, y: (clientY - CTM.f) / CTM.d };
+            const newX = mousePos.x - offset.x;
+            const newY = mousePos.y - offset.y;
+            const { scale, angle } = getTransformValues(selectedElement);
+            setTransform(selectedElement, { tx: newX, ty: newY, scale, angle });
+            updateSelectionAdorners();
+        }
+
+        function endDrag() {
+            sketchbook.removeEventListener('mousemove', drag);
+            sketchbook.removeEventListener('touchmove', drag);
+            sketchbook.removeEventListener('mouseup', endDrag);
+            sketchbook.removeEventListener('touchend', endDrag);
+            sketchbook.removeEventListener('mouseleave', endDrag);
+        }
+        
+        function startResize(e) {
+            e.preventDefault(); e.stopPropagation(); isResizing = true;
+            const CTM = sketchbook.getScreenCTM();
+            const { tx, ty, scale } = getTransformValues(selectedElement);
+            selectedElement.dataset.initialScale = scale;
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mouseX = (clientX - CTM.e) / CTM.a;
+            const mouseY = (clientY - CTM.f) / CTM.d;
+            const centerDist = Math.hypot(mouseX - tx, mouseY - ty);
+            selectedElement.dataset.initialCenterDist = centerDist;
+            sketchbook.addEventListener('mousemove', resize);
+            sketchbook.addEventListener('touchmove', resize, { passive: false });
+            sketchbook.addEventListener('mouseup', endResize);
+            sketchbook.addEventListener('touchend', endResize);
+            sketchbook.addEventListener('mouseleave', endResize);
+        }
+
+        function resize(e) {
+            if (!isResizing) return;
+            e.preventDefault();
+            const CTM = sketchbook.getScreenCTM();
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mouseX = (clientX - CTM.e) / CTM.a;
+            const mouseY = (clientY - CTM.f) / CTM.d;
+            const initialScale = parseFloat(selectedElement.dataset.initialScale);
+            const initialCenterDist = parseFloat(selectedElement.dataset.initialCenterDist);
+            const { tx, ty, angle } = getTransformValues(selectedElement);
+            const currentDist = Math.hypot(mouseX - tx, mouseY - ty);
+            if (initialCenterDist === 0) return;
+            const scaleFactor = currentDist / initialCenterDist;
+            let newScale = initialScale * scaleFactor;
+            newScale = Math.max(0.1, newScale);
+            setTransform(selectedElement, { tx, ty, scale: newScale, angle });
+            updateSelectionAdorners();
+        }
+
+        function endResize() {
+            isResizing = false;
+            if (selectedElement) {
+                delete selectedElement.dataset.initialScale;
+                delete selectedElement.dataset.initialCenterDist;
+            }
+            sketchbook.removeEventListener('mousemove', resize);
+            sketchbook.removeEventListener('touchmove', resize);
+            sketchbook.removeEventListener('mouseup', endResize);
+            sketchbook.removeEventListener('touchend', endResize);
+            sketchbook.removeEventListener('mouseleave', endResize);
+        }
+
+        function startRotate(e) {
+            e.preventDefault(); e.stopPropagation(); isRotating = true;
+            const CTM = sketchbook.getScreenCTM();
+            const { tx, ty, angle } = getTransformValues(selectedElement);
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mouseX = (clientX - CTM.e) / CTM.a;
+            const mouseY = (clientY - CTM.f) / CTM.d;
+            const initialMouseAngle = Math.atan2(mouseY - ty, mouseX - tx) * (180 / Math.PI);
+            selectedElement.dataset.initialAngle = angle;
+            selectedElement.dataset.initialMouseAngle = initialMouseAngle;
+            sketchbook.addEventListener('mousemove', rotate);
+            sketchbook.addEventListener('touchmove', rotate, { passive: false });
+            sketchbook.addEventListener('mouseup', endRotate);
+            sketchbook.addEventListener('touchend', endRotate);
+            sketchbook.addEventListener('mouseleave', endRotate);
+        }
+
+        function rotate(e) {
+            if (!isRotating) return;
+            e.preventDefault();
+            const CTM = sketchbook.getScreenCTM();
+            const { tx, ty, scale } = getTransformValues(selectedElement);
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            const mouseX = (clientX - CTM.e) / CTM.a;
+            const mouseY = (clientY - CTM.f) / CTM.d;
+            const currentMouseAngle = Math.atan2(mouseY - ty, mouseX - tx) * (180 / Math.PI);
+            const initialMouseAngle = parseFloat(selectedElement.dataset.initialMouseAngle);
+            const initialAngle = parseFloat(selectedElement.dataset.initialAngle);
+            const angleChange = currentMouseAngle - initialMouseAngle;
+            const newAngle = initialAngle + angleChange;
+            setTransform(selectedElement, { tx, ty, scale, angle: newAngle });
+            updateSelectionAdorners();
+        }
+
+        function endRotate() {
+            isRotating = false;
+            if (selectedElement) {
+                delete selectedElement.dataset.initialAngle;
+                delete selectedElement.dataset.initialMouseAngle;
+            }
+            sketchbook.removeEventListener('mousemove', rotate);
+            sketchbook.removeEventListener('touchmove', rotate);
+            sketchbook.removeEventListener('mouseup', endRotate);
+            sketchbook.removeEventListener('touchend', endRotate);
+            sketchbook.removeEventListener('mouseleave', endRotate);
+        }
+
+        function toggleDrawingMode(type) {
+            if (isDrawingMode && drawingType === type) {
+                isDrawingMode = false;
+                drawingType = null;
+            } else {
+                isDrawingMode = true;
+                drawingType = type;
+                deselectElement();
+            }
+            
+            drawShapeBtn.classList.toggle('active', isDrawingMode && drawingType === 'shape');
+            drawLineBtn.classList.toggle('active', isDrawingMode && drawingType === 'line');
+            sketchbook.classList.toggle('drawing-mode', isDrawingMode);
+        }
+
+        drawShapeBtn.addEventListener('click', () => toggleDrawingMode('shape'));
+        drawLineBtn.addEventListener('click', () => toggleDrawingMode('line'));
+        
+        function startDrawing(e) {
+            const { x, y } = getMousePos(e);
+            currentDrawingPath = document.createElementNS(svgNS, 'path');
+            currentDrawingPath.setAttribute('d', `M ${x} ${y}`);
+            currentDrawingPath.setAttribute('stroke', '#1f2937');
+            currentDrawingPath.setAttribute('stroke-width', '5');
+            currentDrawingPath.setAttribute('fill', 'none');
+            currentDrawingPath.setAttribute('stroke-linecap', 'round');
+            currentDrawingPath.setAttribute('stroke-linejoin', 'round');
+            sketchbook.appendChild(currentDrawingPath);
+            sketchbook.addEventListener('mousemove', drawing);
+            sketchbook.addEventListener('touchmove', drawing, { passive: false });
+            sketchbook.addEventListener('mouseup', endDrawing);
+            sketchbook.addEventListener('touchend', endDrawing);
+        }
+
+        function drawing(e) {
+            if (!currentDrawingPath) return;
+            e.preventDefault();
+            const { x, y } = getMousePos(e);
+            const d = currentDrawingPath.getAttribute('d');
+            currentDrawingPath.setAttribute('d', `${d} L ${x} ${y}`);
+        }
+
+        function endDrawing() {
+            if(!currentDrawingPath) return;
+
+            const path = currentDrawingPath;
+            currentDrawingPath = null;
+            
+            const bBox = path.getBBox();
+            if(bBox.width < 5 && bBox.height < 5) { 
+                path.remove();
+                isDrawingMode = false;
+                drawShapeBtn.classList.remove('active');
+                drawLineBtn.classList.remove('active');
+                sketchbook.classList.remove('drawing-mode');
+                return;
+            }
+            
+            const centerX = bBox.x + bBox.width / 2;
+            const centerY = bBox.y + bBox.height / 2;
+            const finalGroup = document.createElementNS(svgNS, 'g');
+            finalGroup.id = `part-${partIdCounter++}`;
+            finalGroup.classList.add('draggable-item');
+            path.setAttribute('transform', `translate(${-centerX}, ${-centerY})`);
+
+            if (drawingType === 'shape') {
+                const d = path.getAttribute('d');
+                path.setAttribute('d', d + ' Z');
+                path.removeAttribute('stroke');
+                path.removeAttribute('stroke-width');
+                path.removeAttribute('stroke-linecap');
+                path.removeAttribute('stroke-linejoin');
+                path.setAttribute('fill', '#9ca3af');
+                path.classList.add('colorable');
+            } else { // 'line'
+                path.classList.add('stroke-colorable');
+            }
+            
+            finalGroup.appendChild(path);
+            setTransform(finalGroup, { tx: centerX, ty: centerY, scale: 1, angle: 0 });
+            sketchbook.appendChild(finalGroup);
+            
+            sketchbook.removeEventListener('mousemove', drawing);
+            sketchbook.removeEventListener('touchmove', drawing);
+            sketchbook.removeEventListener('mouseup', endDrawing);
+            sketchbook.removeEventListener('touchend', endDrawing);
+            
+            isDrawingMode = false;
+            drawShapeBtn.classList.remove('active');
+            drawLineBtn.classList.remove('active');
+            sketchbook.classList.remove('drawing-mode');
+            selectElement(finalGroup);
+        }
+        
+        colorPalette.addEventListener('click', (e) => {
+            const swatch = e.target.closest('.color-swatch');
+            if (!swatch || !selectedElement) return;
+            const color = swatch.dataset.color;
+            const colorableElements = selectedElement.querySelectorAll('.colorable');
+            const strokeColorableElements = selectedElement.querySelectorAll('.stroke-colorable');
+            colorableElements.forEach(el => el.setAttribute('fill', color));
+            strokeColorableElements.forEach(el => el.setAttribute('stroke', color));
+        });
+
+        function selectElement(element) {
+            deselectElement();
+            selectedElement = element;
+            const isColorable = selectedElement.querySelector('.colorable, .stroke-colorable');
+            if(isColorable) {
+                colorControls.classList.remove('hidden');
+            }
+            createSelectionAdorners();
+        }
+
+        function deselectElement() {
+            removeSelectionAdorners();
+            selectedElement = null;
+            colorControls.classList.add('hidden');
+        }
+
+         function createSelectionAdorners() {
+            if (!selectedElement) return;
+            removeSelectionAdorners();
+            const adornersGroup = document.createElementNS(svgNS, 'g');
+            adornersGroup.id = 'selection-adorners';
+            const rotationLine = document.createElementNS(svgNS, 'line');
+            rotationLine.classList.add('rotation-line');
+            adornersGroup.appendChild(rotationLine);
+            const selectionBox = document.createElementNS(svgNS, 'rect');
+            selectionBox.classList.add('selection-box');
+            adornersGroup.appendChild(selectionBox);
+            ['nw', 'ne', 'sw', 'se'].forEach(corner => {
+                const handle = document.createElementNS(svgNS, 'rect');
+                handle.classList.add('resize-handle');
+                handle.dataset.corner = corner;
+                adornersGroup.appendChild(handle);
+            });
+            const rotationHandle = document.createElementNS(svgNS, 'circle');
+            rotationHandle.classList.add('rotation-handle');
+            adornersGroup.appendChild(rotationHandle);
+            sketchbook.appendChild(adornersGroup);
+            updateSelectionAdorners();
+        }
+
+        function updateSelectionAdorners() {
+            const adornersGroup = document.getElementById('selection-adorners');
+            if (!adornersGroup || !selectedElement) return;
+            const selectionBox = adornersGroup.querySelector('.selection-box');
+            const handles = adornersGroup.querySelectorAll('.resize-handle');
+            const rotationHandle = adornersGroup.querySelector('.rotation-handle');
+            const rotationLine = adornersGroup.querySelector('.rotation-line');
+            const bBox = selectedElement.getBBox();
+            const { tx, ty, scale, angle } = getTransformValues(selectedElement);
+            adornersGroup.setAttribute('transform', `translate(${tx}, ${ty}) rotate(${angle})`);
+            const scaledWidth = bBox.width * scale;
+            const scaledHeight = bBox.height * scale;
+            const scaledX = bBox.x * scale;
+            const scaledY = bBox.y * scale;
+            selectionBox.setAttribute('x', scaledX);
+            selectionBox.setAttribute('y', scaledY);
+            selectionBox.setAttribute('width', scaledWidth);
+            selectionBox.setAttribute('height', scaledHeight);
+            const handleSize = 10; const offset = handleSize / 2;
+            const corners = {
+                nw: { x: scaledX - offset, y: scaledY - offset, cursor: 'nwse-resize' },
+                ne: { x: scaledX + scaledWidth - offset, y: scaledY - offset, cursor: 'nesw-resize' },
+                sw: { x: scaledX - offset, y: scaledY + scaledHeight - offset, cursor: 'nesw-resize' },
+                se: { x: scaledX + scaledWidth - offset, y: scaledY + scaledHeight - offset, cursor: 'nwse-resize' },
+            };
+            handles.forEach(handle => {
+                const corner = handle.dataset.corner;
+                handle.setAttribute('x', corners[corner].x);
+                handle.setAttribute('y', corners[corner].y);
+                handle.setAttribute('width', handleSize);
+                handle.setAttribute('height', handleSize);
+                handle.style.cursor = corners[corner].cursor;
+            });
+            const handleRadius = 8;
+            const rotationHandleY = scaledY - 30;
+            const rotationHandleX = scaledX + scaledWidth / 2;
+            rotationHandle.setAttribute('cx', rotationHandleX);
+            rotationHandle.setAttribute('cy', rotationHandleY);
+            rotationHandle.setAttribute('r', handleRadius);
+            rotationLine.setAttribute('x1', rotationHandleX);
+            rotationLine.setAttribute('y1', scaledY);
+            rotationLine.setAttribute('x2', rotationHandleX);
+            rotationLine.setAttribute('y2', rotationHandleY);
+        }
+
+        function removeSelectionAdorners() {
+            const adornersGroup = document.getElementById('selection-adorners');
+            if (adornersGroup) adornersGroup.remove();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
+                selectedElement.remove();
+                deselectElement();
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            const parts = sketchbook.querySelectorAll('.draggable-item');
+            parts.forEach(part => part.remove());
+            deselectElement();
+        });
+
+        saveBtn.addEventListener('click', () => {
+            deselectElement();
+            const svgData = new XMLSerializer().serializeToString(sketchbook);
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = sketchbook.clientWidth;
+                canvas.height = sketchbook.clientHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                const pngUrl = canvas.toDataURL('image/png');
+                downloadLink.href = pngUrl;
+                downloadLink.download = 'my-character.png';
+                downloadLink.click();
+            };
+            img.src = url;
+        });
+
+    </script>
+</body>
+</html>
+
