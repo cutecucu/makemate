@@ -404,10 +404,31 @@
         import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, onSnapshot, query, where, updateDoc, deleteDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase 설정 ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
+        // 중요: GitHub 등 외부에서 사용하려면, 본인의 Firebase 프로젝트 설정으로 이 부분을 교체해야 합니다!
+        // 1. Firebase 콘솔(https://console.firebase.google.com/)에서 프로젝트를 만드세요.
+        // 2. 프로젝트 설정 > 일반 탭에서 '웹 앱'을 등록하고 firebaseConfig 값을 복사하세요.
+        // 3. Firestore Database와 Authentication(익명 로그인 활성화)을 활성화하세요.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyC7hwYS_Ww9q7_9kHewjlKPDmXzJPB1Hko",
+                authDomain: "todolist-b9581.firebaseapp.com",
+                projectId: "todolist-b9581",
+                storageBucket: "todolist-b9581.firebasestorage.app",
+                messagingSenderId: "184765484937",
+                appId: "1:184765484937:web:15328e8f30d6b7f5cbdb58",
+                measurementId: "G-2KS0DCH3NS"
+            };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        const app = initializeApp(firebaseConfig);
+        let app;
+        try {
+            app = initializeApp(firebaseConfig);
+        } catch (e) {
+            console.error("Firebase 초기화 실패. 설정 값을 확인해주세요.", e);
+            loadingOverlay.innerHTML = `<div class="text-red-500 text-center">Firebase 연결 실패.<br>설정 값을 확인해주세요.</div>`;
+        }
+        
         const db = getFirestore(app);
         const auth = getAuth(app);
         
