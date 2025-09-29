@@ -273,8 +273,8 @@
     <input type="file" id="admin-profile-upload-input" class="hidden" accept="image/*">
     
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[100]">
-        <div class="text-white text-xl font-bold">✨ AI가 생성 중...</div>
+    <div id="loading-overlay" class="fixed inset-0 bg-white flex items-center justify-center z-[100]">
+        <div class="text-purple-600 text-xl font-bold">로딩 중...</div>
     </div>
 
 
@@ -1644,6 +1644,9 @@
 
         // --- 앱 초기화 ---
         const setupApp = () => {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
             populateTimeSelect(newTaskTimeInput);
             populateTimeSelect(purchaseTimeInput);
             populateTimeSelect(adminAddTaskTime);
@@ -1666,6 +1669,8 @@
                     await seedShopItems();
                     updateDateUI();
                     updateUIForUser();
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
                 } else {
                     try {
                         const token = typeof __initial_auth_token !== 'undefined' && __initial_auth_token;
@@ -1676,6 +1681,7 @@
                         }
                     } catch (e) {
                         console.error("Authentication failed: ", e);
+                         loadingOverlay.innerHTML = `<div class="text-red-500 text-center">인증 실패.<br>페이지를 새로고침 해주세요.</div>`;
                     }
                 }
             });
