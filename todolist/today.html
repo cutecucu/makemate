@@ -38,18 +38,21 @@
             background-size: cover;
             background-position: center;
         }
-        #profile-section, #points-display-header {
+        #profile-and-date-section > div, #points-display-header {
             transition: all 0.3s ease-in-out;
             overflow: hidden;
         }
-        header.collapsed #profile-section, header.collapsed #points-display-header {
+        header.collapsed #profile-section {
             height: 0;
-            padding-top: 0;
-            padding-bottom: 0;
             margin-top: 0;
             opacity: 0;
         }
-
+        header.collapsed #points-display-header {
+             height: 0;
+             opacity: 0;
+             margin-top: -1rem;
+             padding: 0;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -985,9 +988,8 @@
                     }
 
                 } else {
-                    // 사용자가 존재하지 않으면 기본값으로 생성
+                    // This block should ideally not be hit after ensureUserDocumentsExist runs
                     profileImg.src = userProfiles[currentAppUser].img;
-                    setDoc(userDocRef, { name: currentAppUser, points: 0, lastCompletionDate: null, profileImgBase64: null, adminMessage: '', quote: userProfiles[currentAppUser].quote });
                 }
             });
         };
