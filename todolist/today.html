@@ -1468,6 +1468,19 @@
                 await batch.commit();
              }
         };
+        
+        const ensureUserDocumentsExist = async () => {
+            const users = ['지아', '지후'];
+            const batch = writeBatch(db);
+            for (const userName of users) {
+                const userDocRef = doc(db, `artifacts/${appId}/public/data/users/${userName}`);
+                const userDoc = await getDoc(userDocRef);
+                if (!userDoc.exists()) {
+                    batch.set(userDocRef, { name: userName, points: 0, lastCompletionDate: null, profileImgBase64: null, adminMessage: '', quote: userProfiles[userName].quote });
+                }
+            }
+            await batch.commit();
+        }
 
         const changeDate = (offset) => {
             currentDate.setDate(currentDate.getDate() + offset);
@@ -1675,6 +1688,14 @@
             }
         });
 
+        taskListEl.addEventListener('scroll', () => {
+            if (taskListEl.scrollTop > 50) {
+                appHeader.classList.add('collapsed');
+            } else {
+                appHeader.classList.remove('collapsed');
+            }
+        });
+
 
         // --- 앱 초기화 ---
         const setupApp = () => {
@@ -1691,6 +1712,8 @@
                 if (user) {
                     currentUser = user;
                     
+                    await ensureUserDocumentsExist();
+
                     if (currentAppUser !== '관리자') {
                         const todayString = dateToYYYYMMDD(new Date());
                         const lastVisit = localStorage.getItem(`lastVisitDate_${currentAppUser}`);
