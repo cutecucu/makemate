@@ -63,7 +63,7 @@
 </head>
 <body class="bg-gray-100">
 
-    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col relative transition-all duration-300">
+    <div id="app" class="max-w-md mx-auto h-screen bg-white shadow-lg flex flex-col relative overflow-hidden transition-all duration-300">
         <!-- 헤더 -->
         <header id="app-header" class="bg-gradient-to-br from-purple-500 to-pink-500 text-white py-4 px-4 shadow-lg z-20 sticky top-0">
             <div class="flex justify-between items-center">
@@ -140,12 +140,12 @@
         </header>
 
         <!-- 할일 목록 (타임라인) -->
-        <main id="task-list" class="flex-1 py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
+        <main id="task-list" class="flex-1 overflow-y-auto py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
             <!-- 타임라인이 여기에 동적으로 생성됩니다. -->
         </main>
         
         <!-- 포인트 상점 -->
-        <main id="shop-page" class="hidden flex-1 py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
+        <main id="shop-page" class="hidden flex-1 overflow-y-auto py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
              <div class="bg-white p-4 rounded-lg shadow-md mb-4 sticky top-0 z-10">
                 <p class="text-lg text-center">
                     <span id="shop-user-name" class="font-bold"></span>님의 현재 포인트: <span class="total-points-display font-bold text-pink-600">0</span>점
@@ -157,7 +157,7 @@
         </main>
 
         <!-- 관리자 페이지 -->
-        <main id="admin-page" class="hidden flex-1 py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
+        <main id="admin-page" class="hidden flex-1 overflow-y-auto py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="lg:col-span-2 space-y-4">
                     <div class="bg-white p-4 rounded-lg shadow-md">
@@ -950,54 +950,55 @@
             
             showHomePage();
 
-            const dateInfo = getRelativeDateInfo(currentDate);
-            const dateString = dateToYYYYMMDD(currentDate);
+            let currentTasks = [];
+            let currentUserData = null;
 
-            const tasksRef = collection(db, `artifacts/${appId}/public/data/tasks`);
-            const qTasks = query(tasksRef, where("owner", "==", currentAppUser), where("date", "==", dateString));
-            tasksUnsubscribe = onSnapshot(qTasks, (snapshot) => {
-                const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderTasks(tasks, dateInfo.isPast);
-            });
+            const renderUserView = () => {
+                if (!currentUserData) {
+                    return;
+                }
+
+                const points = currentUserData.points || 0;
+                totalPointsDisplays.forEach(el => el.textContent = points.toLocaleString());
+                adminMessageDisplay.textContent = currentUserData.adminMessage || "";
+                userQuoteDisplay.textContent = currentUserData.quote || userProfiles[currentAppUser].quote;
+                profileImg.src = currentUserData.profileImgBase64 || userProfiles[currentAppUser].img;
+
+                const todayString = dateToYYYYMMDD(new Date());
+                const dateInfo = getRelativeDateInfo(currentDate);
+                const isTodayCompleted = dateInfo.isToday && (currentUserData.lastCompletionDate === todayString);
+
+                if (dateInfo.isToday) {
+                    endDayBtn.style.display = 'block';
+                    if (isTodayCompleted) {
+                        endDayBtn.textContent = '오늘 미션 완료! 🎉';
+                        endDayBtn.disabled = true;
+                    } else {
+                        endDayBtn.textContent = '오늘 하루 끝';
+                        endDayBtn.disabled = false;
+                    }
+                } else {
+                    endDayBtn.style.display = 'none';
+                }
+
+                const isReadOnly = dateInfo.isPast || isTodayCompleted;
+                renderTasks(currentTasks, isReadOnly);
+            };
 
             const userDocRef = doc(db, `artifacts/${appId}/public/data/users/${currentAppUser}`);
             userUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    const userData = docSnap.data();
-                    const points = userData.points || 0;
-                    totalPointsDisplays.forEach(el => el.textContent = points.toLocaleString());
-                    
-                    if(userData.adminMessage) {
-                        adminMessageDisplay.textContent = `${userData.adminMessage}`;
-                    } else {
-                        adminMessageDisplay.textContent = "";
-                    }
-                    
-                    userQuoteDisplay.textContent = userData.quote || userProfiles[currentAppUser].quote;
-                    
-                    if (userData.profileImgBase64) {
-                        profileImg.src = userData.profileImgBase64;
-                    } else {
-                        profileImg.src = userProfiles[currentAppUser].img;
-                    }
-                    
-                    const todayString = dateToYYYYMMDD(new Date());
-                    const dateInfo = getRelativeDateInfo(currentDate);
-
-                    if (dateInfo.isToday) {
-                        endDayBtn.style.display = 'block';
-                        if (userData.lastCompletionDate === todayString) {
-                            endDayBtn.textContent = '오늘 미션 완료! 🎉';
-                            endDayBtn.disabled = true;
-                        } else {
-                            endDayBtn.textContent = '오늘 하루 끝';
-                            endDayBtn.disabled = false;
-                        }
-                    } else {
-                        endDayBtn.style.display = 'none';
-                    }
-
+                    currentUserData = docSnap.data();
+                    renderUserView();
                 }
+            });
+
+            const dateString = dateToYYYYMMDD(currentDate);
+            const tasksRef = collection(db, `artifacts/${appId}/public/data/tasks`);
+            const qTasks = query(tasksRef, where("owner", "==", currentAppUser), where("date", "==", dateString));
+            tasksUnsubscribe = onSnapshot(qTasks, (snapshot) => {
+                currentTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUserView();
             });
         };
         
