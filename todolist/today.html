@@ -53,6 +53,12 @@
              margin-top: -1rem;
              padding: 0;
         }
+        #date-navigation {
+             transition: padding-top 0.3s ease-in-out;
+        }
+        header.collapsed #date-navigation {
+            padding-top: 0.5rem; /* 축소 시 제목과의 간격을 확보합니다. */
+        }
     </style>
 </head>
 <body class="bg-gray-100">
