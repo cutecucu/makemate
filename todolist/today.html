@@ -57,9 +57,9 @@
 </head>
 <body class="bg-gray-100">
 
-    <div id="app" class="max-w-md mx-auto h-screen bg-white shadow-lg flex flex-col relative overflow-hidden transition-all duration-300">
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col relative transition-all duration-300">
         <!-- 헤더 -->
-        <header id="app-header" class="bg-gradient-to-br from-purple-500 to-pink-500 text-white py-4 px-4 shadow-lg z-20">
+        <header id="app-header" class="bg-gradient-to-br from-purple-500 to-pink-500 text-white py-4 px-4 shadow-lg z-20 sticky top-0">
             <div class="flex justify-between items-center">
                 <h1 id="main-title" class="text-2xl font-bold"><span id="header-username"></span><span id="header-title-text"> 오늘 할 일</span></h1>
                 <div id="header-icons" class="flex items-center space-x-2">
@@ -134,12 +134,12 @@
         </header>
 
         <!-- 할일 목록 (타임라인) -->
-        <main id="task-list" class="flex-1 overflow-y-auto py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
+        <main id="task-list" class="flex-1 py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
             <!-- 타임라인이 여기에 동적으로 생성됩니다. -->
         </main>
         
         <!-- 포인트 상점 -->
-        <main id="shop-page" class="hidden flex-1 overflow-y-auto py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
+        <main id="shop-page" class="hidden flex-1 py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
              <div class="bg-white p-4 rounded-lg shadow-md mb-4 sticky top-0 z-10">
                 <p class="text-lg text-center">
                     <span id="shop-user-name" class="font-bold"></span>님의 현재 포인트: <span class="total-points-display font-bold text-pink-600">0</span>점
@@ -151,7 +151,7 @@
         </main>
 
         <!-- 관리자 페이지 -->
-        <main id="admin-page" class="hidden flex-1 overflow-y-auto py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
+        <main id="admin-page" class="hidden flex-1 py-4 px-4 sm:px-6 no-scrollbar bg-gray-50 relative">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="lg:col-span-2 space-y-4">
                     <div class="bg-white p-4 rounded-lg shadow-md">
@@ -1700,8 +1700,8 @@
             }
         });
 
-        taskListEl.addEventListener('scroll', () => {
-            if (taskListEl.scrollTop > 50) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
                 appHeader.classList.add('collapsed');
             } else {
                 appHeader.classList.remove('collapsed');
@@ -1761,3 +1761,4 @@
     </script>
 </body>
 </html>
+
