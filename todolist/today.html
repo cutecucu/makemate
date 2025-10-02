@@ -76,7 +76,7 @@
                     </button>
                     <button id="settings-btn" class="p-2 rounded-full hover:bg-white/20 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </button>
@@ -809,15 +809,19 @@
         };
         
         const playSoundAndAnimate = (event, isChecked) => {
-             const synth = new window.Tone.Synth().toDestination();
-            if (typeof window.Tone !== 'undefined') {
-                if (window.Tone.context.state !== 'running') window.Tone.start();
+            if (typeof window.Tone !== 'undefined' && window.Tone.Synth) {
+                if (window.Tone.context.state !== 'running') {
+                    window.Tone.start();
+                }
+                if (!synth) synth = new window.Tone.Synth().toDestination();
+                
                 if (isChecked) {
                     synth.triggerAttackRelease("C5", "8n", window.Tone.now());
                 } else {
                     synth.triggerAttackRelease("G4", "8n", window.Tone.now());
                 }
             }
+
             if (isChecked) {
                 const rect = event.target.getBoundingClientRect(), appRect = appEl.getBoundingClientRect();
                 const emoji = document.createElement('span');
@@ -987,9 +991,6 @@
                         endDayBtn.style.display = 'none';
                     }
 
-                } else {
-                    // This block should ideally not be hit after ensureUserDocumentsExist runs
-                    profileImg.src = userProfiles[currentAppUser].img;
                 }
             });
         };
@@ -1204,9 +1205,10 @@
         };
         
         const handleEndDay = async () => {
-             if (typeof window.Tone !== 'undefined') {
+            // '오늘 하루 끝' 버튼 클릭 시 효과음 재생
+            if (typeof window.Tone !== 'undefined' && window.Tone.Synth) {
                 if (window.Tone.context.state !== 'running') window.Tone.start();
-                 const synth = new window.Tone.Synth().toDestination();
+                const synth = new window.Tone.Synth().toDestination();
                 synth.triggerAttackRelease("C4", "8n", window.Tone.now());
                 synth.triggerAttackRelease("E4", "8n", window.Tone.now() + 0.2);
                 synth.triggerAttackRelease("G4", "8n", window.Tone.now() + 0.4);
@@ -1219,19 +1221,23 @@
             const todayString = dateToYYYYMMDD(today);
             const tomorrowString = dateToYYYYMMDD(tomorrow);
 
+            // Firestore에서 오늘 날짜의 현재 사용자 할 일 목록을 가져옵니다.
             const tasksRef = collection(db, `artifacts/${appId}/public/data/tasks`);
             const qToday = query(tasksRef, where("owner", "==", currentAppUser), where("date", "==", todayString));
 
             try {
                 const querySnapshot = await getDocs(qToday);
-                let pointsToday = 0;
-                const batch = writeBatch(db);
+                let pointsToday = 0; // 오늘 획득할 포인트를 저장할 변수
+                const batch = writeBatch(db); // 여러 Firestore 작업을 한 번에 처리하기 위한 batch 생성
 
+                // 오늘 할 일들을 하나씩 확인합니다.
                 querySnapshot.forEach(doc => {
                     const task = doc.data();
                     if (task.completed) {
+                        // 할 일이 완료되었다면 (체크박스가 선택되었다면), 포인트를 합산합니다.
                         pointsToday += task.points;
                     } else {
+                        // 완료되지 않은 할 일은 내일로 미뤄지고, 포인트는 0점으로 변경됩니다.
                         const taskRef = doc.ref;
                         batch.update(taskRef, {
                             date: tomorrowString,
@@ -1240,17 +1246,21 @@
                     }
                 });
 
+                // 사용자 정보 문서를 가져와서 총 포인트를 업데이트합니다.
                 const userDocRef = doc(db, `artifacts/${appId}/public/data/users/${currentAppUser}`);
                 const userDocSnap = await getDoc(userDocRef);
                 if (userDocSnap.exists()) {
-                     batch.set(userDocRef, {
+                    // 기존 포인트에 오늘 획득한 포인트를 더하고, 마지막 완료 날짜를 오늘로 기록합니다.
+                    batch.set(userDocRef, {
                         points: (userDocSnap.data().points || 0) + pointsToday,
                         lastCompletionDate: todayString
                     }, { merge: true });
                 }
                 
+                // 준비된 모든 Firestore 작업을 한 번에 실행합니다.
                 await batch.commit();
 
+                // 사용자에게 결과 메시지를 모달로 보여줍니다.
                 showModal(`오늘 하루를 마감했습니다! ${pointsToday} 포인트를 획득했습니다!`);
 
             } catch (e) {
@@ -1751,4 +1761,3 @@
     </script>
 </body>
 </html>
-
