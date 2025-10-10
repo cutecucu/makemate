@@ -72,9 +72,12 @@
 <body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
 
     <div class="w-full max-w-7xl bg-white rounded-2xl shadow-lg p-6 flex flex-col">
-        <header class="text-center mb-4">
-            <h1 class="text-3xl font-bold text-gray-800">나만의 캐릭터 파츠 만들기</h1>
-            <p class="text-gray-500 mt-1">파츠를 클릭해 추가하고, 스케치북에서 움직이고 크기를 조절해보세요!</p>
+        <header class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">나만의 캐릭터 파츠 만들기</h1>
+                <p class="text-gray-500 mt-1">파츠를 클릭해 추가하고, 스케치북에서 움직이고 크기를 조절해보세요!</p>
+            </div>
+            <img src="https://placehold.co/64x64/a78bfa/ffffff?text=LOGO" alt="로고" class="rounded-lg">
         </header>
 
         <div class="flex flex-col md:flex-row gap-6 w-full">
@@ -105,12 +108,6 @@
                         <svg class="part-item" data-shape="blob" width="64" height="60" viewBox="0 0 100 94"><path class="colorable" d="M85.3,62.3c9.9,20.5-12.8,32.3-30.6,31.2c-17.8-1.1-29-20.5-23.5-38.3c5.5-17.8,29.9-19.8,42.5-13.3 C86.4,48.4,75.4,41.7,85.3,62.3z" fill="#c4b5fd"/></svg>
                         <div class="part-item w-16 h-12 bg-teal-300" style="clip-path: polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%); border-radius: 8px;" data-shape="trapezoid-round"></div>
                     </div>
-                    <div class="mt-6">
-                        <label for="image-upload" class="cursor-pointer inline-block w-full px-4 py-3 bg-indigo-100 text-indigo-700 font-semibold text-center rounded-lg shadow-md hover:bg-indigo-200 transition-all duration-200">
-                            이미지 추가
-                        </label>
-                        <input type="file" id="image-upload" class="hidden" accept="image/png, image/jpeg, image/svg+xml">
-                    </div>
                 </div>
             </aside>
 
@@ -130,6 +127,10 @@
                     <button id="set-center-btn" class="px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200">
                         중심점 설정
                     </button>
+                    <label for="image-upload" class="cursor-pointer px-4 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200">
+                        이미지 추가
+                    </label>
+                    <input type="file" id="image-upload" class="hidden" accept="image/png, image/jpeg, image/svg+xml">
                     <button id="save-btn" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                         이미지로 저장
                     </button>
