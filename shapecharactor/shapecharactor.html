@@ -4,865 +4,1039 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>나만의 도형 캐릭터 만들기</title>
+    <!-- Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fabric.js 로드 (캔버스 라이브러리) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- Google Fonts (Inter) 로드 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* 기본 폰트 및 배경 설정 */
         body {
-            font-family: 'Noto Sans KR', sans-serif;
-            touch-action: none; /* 모바일에서 불필요한 스크롤 방지 */
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
         }
-        /* 활성 탭 스타일 */
-        .tab-button.active {
-            border-color: #3b82f6; /* blue-500 */
-            background-color: white;
-            color: #3b82f6;
-            font-weight: 700;
+        /* 활성화된 탭 스타일 */
+        .tab-active {
+            border-color: #3b82f6;
+            background-color: #dbeafe;
+            color: #1e40af;
+            font-weight: 600;
         }
-        /* 스크롤바 디자인 */
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* --- 아이템 컨트롤 UI --- */
-        .sketch-item-wrapper .controls {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* 자식 요소의 이벤트만 받도록 설정 */
+        /* 파츠 아이템 호버 스타일 */
+        .part-item:hover {
+            transform: scale(1.1);
+            background-color: #e0e7ff;
         }
-        .sketch-item-wrapper.has-controls .controls { display: block; }
-        .sketch-item-wrapper.selected {
-            outline: 2px dashed #3b82f6;
-            outline-offset: 4px;
+        /* 스케치북 다중 선택 모드 활성화 시 테두리 스타일 */
+        .multi-select-mode {
+            box-shadow: 0 0 0 4px #f59e0b;
         }
-        .control-handle {
-            position: absolute; width: 22px; height: 22px;
-            pointer-events: auto; /* 이벤트 수신 */
+        /* Fabric.js 컨트롤 커스텀 스타일 */
+        .canvas-container {
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
-        .resize-handle::after {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            width: 14px; height: 14px; transform: translate(-50%, -50%);
-            background: white; border: 2px solid #3b82f6; border-radius: 50%;
-        }
-        .resize-handle { cursor: nwse-resize; }
-        .resize-handle.nw { top: -11px; left: -11px; }
-        .resize-handle.ne { top: -11px; right: -11px; cursor: nesw-resize; }
-        .resize-handle.sw { bottom: -11px; left: -11px; cursor: nesw-resize; }
-        .resize-handle.se { bottom: -11px; right: -11px; }
-        
-        .rotate-handle {
-            top: -42px; left: calc(50% - 11px); cursor: grab;
-        }
-        .rotate-handle::after {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            width: 16px; height: 16px; transform: translate(-50%, -50%);
-            background: white; border: 2px solid #3b82f6; border-radius: 50%;
-        }
-        .rotate-handle::before {
-            content: ''; position: absolute; width: 2px; height: 20px;
-            background: #3b82f6; left: 10px; top: 21px;
-        }
-
-        /* 색상 팔레트 */
-        #color-swatches-panel {
-            position: absolute; display: none; background-color: white; border-radius: 10px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2); padding: 8px;
-            grid-template-columns: repeat(6, 1fr); gap: 8px; z-index: 10001; width: 220px;
-        }
-        .color-swatch {
-            width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid white;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.1); transition: transform 0.15s ease-out;
-        }
-        .color-swatch:hover { transform: scale(1.15); }
-
-        /* 휴지통 */
-        #trash-can {
-            transform: translate(-50%, 150%);
-            transition: transform 0.3s ease-out, background-color 0.2s;
-        }
-        #trash-can.active {
-            transform: translate(-50%, 0);
-        }
-        #trash-can.hover {
-            background-color: #ef4444;
-            transform: translate(-50%, 0) scale(1.1);
-        }
-        #trash-can.hover svg {
-            color: white;
-        }
-        #center-point-handle {
+        /* 스크롤바 스타일링 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px;}
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px;}
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        /* 관리자용 파츠 삭제 버튼 스타일 */
+        .admin-delete-btn {
             position: absolute;
+            top: -4px;
+            right: -4px;
             width: 24px;
             height: 24px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23ef4444' stroke='white' stroke-width='1.5' /%3E%3Cpath d='M12 8v8M8 12h8' stroke='white' stroke-width='1.5' stroke-linecap='round' /%3E%3C/svg%3E");
-            cursor: move;
-            border-radius: 50%;
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            border-radius: 9999px; /* rounded-full */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s, transform 0.2s;
+            border: 2px solid white;
         }
-        #preview-canvas-container {
-            background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        .admin-delete-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
         }
-        #sketchbook.multi-select-mode {
-            border-color: #f59e0b; /* amber-500 */
-            box-shadow: inset 0 0 15px rgba(245, 158, 11, 0.3);
+        /* 레이어 아이템 스타일 */
+        .layer-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            user-select: none;
+        }
+        .layer-item.selected {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+        .layer-item.dragging {
+            opacity: 0.5;
+            background: #c7d2fe;
+        }
+        .layer-item-name {
+            flex-grow: 1;
+            margin: 0 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: default;
+        }
+        .layer-item-controls button {
+            margin-left: 4px;
+            color: #6b7280;
+        }
+        .layer-item-controls button:hover {
+            color: #111827;
+        }
+        .layer-item-controls .toggled-on svg {
+            color: #3b82f6;
+        }
+        .layer-item-controls .locked svg {
+            color: #ef4444;
+        }
+        .layer-item-drag-handle {
+            cursor: grab;
         }
     </style>
 </head>
-<body class="bg-slate-100">
+<body class="w-screen h-screen overflow-hidden flex flex-col">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
-        <header class="flex justify-between items-center mb-6">
-            <div class="text-left">
-                <h1 class="text-2xl md:text-4xl font-bold text-slate-800">나만의 도형 캐릭터 만들기</h1>
-                <p class="text-sm md:text-base text-slate-500 mt-1">도형으로 간단한 나만의 캐릭터를 만들어보세요.</p>
-            </div>
-            <div class="flex items-center gap-4">
-                <button id="save-all-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-all">전체 저장</button>
-                <img src="https://placehold.co/70x70/3b82f6/ffffff?text=Logo" alt="로고" class="rounded-full shadow-md">
-            </div>
-        </header>
+    <!-- ① 헤더 -->
+    <header class="bg-white shadow-md p-3 flex items-center justify-center z-10">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+        <h1 class="text-xl font-bold ml-2 text-gray-800">나만의 도형 캐릭터 만들기</h1>
+    </header>
 
-        <main class="flex flex-col lg:flex-row gap-6 md:gap-8">
-            <aside class="w-full lg:w-1/3 xl:w-1/4 bg-white rounded-xl shadow-lg p-4 flex flex-col order-2 lg:order-1">
-                <nav class="flex border-b border-slate-200">
-                    <button class="tab-button flex-1 py-3 text-center border-b-4 border-transparent text-slate-500 transition-colors duration-200" data-tab="shapes">도형</button>
-                    <button class="tab-button flex-1 py-3 text-center border-b-4 border-transparent text-slate-500 transition-colors duration-200" data-tab="lines">선</button>
-                    <button class="tab-button flex-1 py-3 text-center border-b-4 border-transparent text-slate-500 transition-colors duration-200" data-tab="eyes">눈</button>
-                </nav>
-                <div class="h-80 lg:h-auto lg:flex-grow py-4 custom-scrollbar overflow-y-auto">
-                    <div id="shapes-panel" class="tab-panel grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 gap-3"></div>
-                    <div id="lines-panel" class="tab-panel hidden grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 gap-3"></div>
-                    <div id="eyes-panel" class="tab-panel hidden grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 gap-3"></div>
+    <!-- 메인 영역 -->
+    <main class="flex-1 flex flex-col lg:flex-row p-2 lg:p-4 gap-4 overflow-hidden">
+        
+        <!-- ② 파츠/레이어 패널 (데스크톱) -->
+        <aside class="w-full lg:w-72 h-full flex-col shrink-0 order-2 lg:order-1 hidden lg:flex gap-4">
+            <!-- 파츠 & 업로드 섹션 -->
+            <div class="bg-white rounded-xl shadow-lg flex flex-col flex-[2] min-h-0">
+                <div class="p-3 border-b border-gray-200"><h2 class="font-semibold text-gray-700">파츠 선택</h2></div>
+                <div class="flex border-b border-gray-200">
+                    <button id="tab-shapes" class="flex-1 p-3 text-sm text-gray-600 border-b-2 tab-active">도형</button>
+                    <button id="tab-lines" class="flex-1 p-3 text-sm text-gray-600 border-b-2 border-transparent">선</button>
                 </div>
-            </aside>
-            <section class="w-full lg:flex-1 aspect-square bg-white rounded-xl shadow-lg relative overflow-hidden border-2 border-dashed border-slate-300 transition-all order-1 lg:order-2" id="sketchbook">
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <p class="text-slate-400 text-lg select-none">이곳에 아이템을 추가하여 캐릭터를 만들어보세요!</p>
+                <div id="parts-container" class="p-3 overflow-y-auto flex-1">
+                    <!-- 파츠가 동적으로 이곳에 추가됩니다. -->
                 </div>
-                <div id="trash-can" class="absolute bottom-6 left-1/2 p-4 rounded-full bg-slate-200 pointer-events-none">
-                    <svg class="w-8 h-8 text-slate-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <!-- 파일 업로드 섹션 -->
+                <div class="p-3 border-t border-gray-200 flex flex-col gap-2">
+                    <input type="file" id="svg-upload-input" class="hidden" accept=".svg">
+                    <button id="upload-btn" class="w-full bg-indigo-500 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-600 transition-all text-sm font-semibold flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        SVG 캔버스에 추가
+                    </button>
+                    <input type="file" id="admin-svg-upload-input" class="hidden" accept=".svg">
+                    <button id="admin-upload-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-all text-sm font-semibold items-center justify-center gap-2 hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        SVG 파츠로 추가
+                    </button>
+                    <p class="text-xs text-center text-gray-400 hidden" id="admin-mode-text">관리자 모드 활성화됨</p>
                 </div>
-                <div id="selection-box" class="absolute border-2 border-dashed border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none hidden"></div>
-                <button id="save-image-btn" class="hidden absolute bottom-6 right-6 bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-600 transition-all">선택 이미지 저장</button>
-            </section>
-        </main>
+            </div>
+            
+            <!-- 레이어 섹션 -->
+            <div class="bg-white rounded-xl shadow-lg flex-1 flex flex-col min-h-0 flex-[1]">
+                <div class="p-3 border-b border-gray-200"><h2 class="font-semibold text-gray-700">레이어</h2></div>
+                <div id="layer-list-desktop" class="flex-1 p-2 overflow-y-auto">
+                    <!-- 데스크톱 레이어 목록이 이곳에 표시됩니다. -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- ③ 스케치북 & ④ 도구 모음 영역 -->
+        <div class="flex-1 flex flex-col gap-2 overflow-hidden order-1 lg:order-2">
+            <div class="relative w-full flex-1">
+                <div id="sketchbook-wrapper" class="w-full h-full bg-white rounded-xl">
+                    <canvas id="sketchbook"></canvas>
+                    <div class="absolute top-3 right-3 flex gap-2 z-10">
+                        <button id="save-all-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-all text-sm font-semibold flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            전체 저장
+                        </button>
+                        <button id="save-selected-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow transition-all text-sm font-semibold flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            선택 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-center">
+                <div class="bg-white/80 backdrop-blur-sm p-2 rounded-xl shadow-lg flex items-center gap-2">
+                    <button id="draw-curve-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2" title="자유 곡선 그리기">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><path d="M20.42 10.18c.62-.28 1.12-.89 1.2-1.62.1-1.04-.62-2.1-1.68-2.32-1.04-.22-2.1.62-2.32 1.68-.08.38.02.78.22 1.12"/><path d="M14.93 17.58c1.56-.63 2.68-2.32 2.68-4.12 0-2.4-1.92-4.38-4.38-4.38-1.8 0-3.4.94-4.12 2.68"/><path d="M3.58 11.58c-.63 1.56-2.32 2.68-4.12 2.68C-2.4 14.26-4.38 12.34-4.38 9.9c0-1.8.94-3.4 2.68-4.12"/><path d="M10.18 3.58c.34.1.68.22 1.02.42"/><path d="M2.1 16.2c.4.18.82.32 1.28.42"/><path d="M21.9 7.8c-.18.4-.32.82-.42 1.28"/><path d="M17.58 14.93c-.63 1.56-2.32 2.68-4.12 2.68-2.4 0-4.38-1.92-4.38-4.38 0-1.8.94-3.4 2.68-4.12"/></svg>
+                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">도형 그리기</span>
+                    </button>
+                    <button id="draw-line-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2" title="선 그리기">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3 16.828V21h4.172l14.002-14.002z"/><path d="m15 5 6 6"/></svg>
+                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">선 그리기</span>
+                    </button>
+                    <div class="border-l border-gray-200 h-6"></div>
+                    <button id="group-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 hidden" title="그룹 만들기">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">그룹</span>
+                    </button>
+                    <button id="ungroup-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 hidden" title="그룹 해제">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><path d="M21 12H3"/><path d="M12 21V3"/></svg>
+                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">그룹 해제</span>
+                    </button>
+                     <button id="layer-btn-mobile" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 lg:hidden" title="레이어 보기">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">레이어</span>
+                    </button>
+                    <button id="stop-drawing-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors hidden" title="그리기 중단">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- UI 오버레이들 -->
+    <div id="color-palette-context-menu" class="fixed hidden z-50">
+        <div class="bg-white p-3 rounded-xl shadow-2xl border border-gray-200">
+            <div id="color-grid" class="grid grid-cols-8 gap-2"></div>
+        </div>
     </div>
-
-    <!-- 색상 팔레트 패널 -->
-    <div id="color-swatches-panel"></div>
-
-    <!-- 이미지 저장 모달 -->
-    <div id="image-export-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl flex flex-col gap-4">
-            <h3 class="text-lg font-bold">이미지 저장 미리보기</h3>
-            <p class="text-sm text-slate-600">중심점을 옮겨 최종 이미지의 중심을 정하세요.</p>
-            <div id="preview-canvas-container" class="w-full h-80 bg-slate-200 rounded-md relative border flex items-center justify-center overflow-hidden">
-                <canvas id="preview-canvas" class="max-w-full max-h-full"></canvas>
-                <div id="center-point-handle" title="중심점 이동"></div>
+    <div id="save-preview-modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-5 rounded-xl shadow-2xl w-11/12 max-w-lg flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">이미지 저장 미리보기</h3>
+                <button id="close-preview-btn" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
-             <div class="w-full">
-                <label for="filename-input" class="text-sm font-medium text-slate-700">파일 이름:</label>
-                <input type="text" id="filename-input" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" value="character-part">
+            <p class="text-sm text-gray-600 mb-3">빨간 중심점을 드래그하여 이미지의 중심을 맞추세요. 중심점에 따라 이미지가 자동으로 잘립니다.</p>
+            <div id="preview-container" class="w-full bg-gray-100 rounded-lg relative overflow-hidden mb-4" style="aspect-ratio: 1/1;">
+                <img id="preview-image" src="" alt="저장 미리보기" class="w-full h-full object-contain">
+                <div id="center-point" class="absolute w-8 h-8 cursor-move select-none" style="transform: translate(-50%, -50%);">
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#ef4444" stroke-width="8" stroke-dasharray="10 5"/>
+                        <circle cx="50" cy="50" r="10" fill="#ef4444"/>
+                    </svg>
+                </div>
             </div>
-            <div class="flex justify-end gap-2">
-                <button id="cancel-export-btn" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">취소</button>
-                <button id="confirm-export-btn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">PNG로 저장</button>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input id="filename-input" type="text" placeholder="파일 이름" value="my-character" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                <button id="save-png-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors font-semibold">PNG로 저장</button>
+                <button id="save-svg-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors font-semibold">SVG로 저장</button>
             </div>
         </div>
     </div>
-
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-11/12 max-w-sm text-center">
+            <h3 id="confirm-title" class="text-lg font-bold text-gray-800 mb-2">삭제 확인</h3>
+            <p id="confirm-message" class="text-sm text-gray-600 mb-6">선택한 항목을 삭제하시겠습니까?</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-cancel-btn" class="px-6 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 font-semibold">취소</button>
+                <button id="confirm-ok-btn" class="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 font-semibold">삭제</button>
+            </div>
+        </div>
+    </div>
+    <div id="layer-modal" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40 lg:hidden">
+        <div id="layer-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col transition-transform translate-y-full" style="height: 60vh;">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-gray-800">레이어</h3>
+                <button id="close-layer-modal-btn" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div id="layer-list-mobile" class="flex-1 overflow-y-auto p-2"></div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const sketchbook = document.getElementById('sketchbook');
-            const placeholderText = sketchbook.querySelector('p');
-            const colorSwatchesPanel = document.getElementById('color-swatches-panel');
-            const trashCan = document.getElementById('trash-can');
-            const selectionBox = document.getElementById('selection-box');
-            const saveImageBtn = document.getElementById('save-image-btn');
-            const saveAllBtn = document.getElementById('save-all-btn');
-            
-            const imageExportModal = document.getElementById('image-export-modal');
-            const previewCanvas = document.getElementById('preview-canvas');
-            const previewCanvasContainer = document.getElementById('preview-canvas-container');
-            const centerPointHandle = document.getElementById('center-point-handle');
-            const confirmExportBtn = document.getElementById('confirm-export-btn');
-            const cancelExportBtn = document.getElementById('cancel-export-btn');
+            // --- DOM 요소 참조 ---
+            const canvasEl = document.getElementById('sketchbook');
+            const sketchbookWrapper = document.getElementById('sketchbook-wrapper');
+            const partsContainer = document.getElementById('parts-container');
+            const tabs = {
+                shapes: document.getElementById('tab-shapes'),
+                lines: document.getElementById('tab-lines'),
+            };
+            const toolBtns = {
+                drawCurve: document.getElementById('draw-curve-btn'),
+                drawLine: document.getElementById('draw-line-btn'),
+                stopDrawing: document.getElementById('stop-drawing-btn'),
+                layerMobile: document.getElementById('layer-btn-mobile'),
+                group: document.getElementById('group-btn'),
+                ungroup: document.getElementById('ungroup-btn'),
+            };
+            const layerListDesktopContainer = document.getElementById('layer-list-desktop');
+            const layerModal = document.getElementById('layer-modal');
+            const layerSheet = document.getElementById('layer-sheet');
+            const closeLayerModalBtn = document.getElementById('close-layer-modal-btn');
+            const layerListMobileContainer = document.getElementById('layer-list-mobile');
+            const adminUploadBtn = document.getElementById('admin-upload-btn');
+            const adminSvgUploadInput = document.getElementById('admin-svg-upload-input');
+            const adminModeText = document.getElementById('admin-mode-text');
+            const uploadBtn = document.getElementById('upload-btn');
+            const svgUploadInput = document.getElementById('svg-upload-input');
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmTitle = document.getElementById('confirm-title');
+            const confirmMessage = document.getElementById('confirm-message');
+            const confirmOkBtn = document.getElementById('confirm-ok-btn');
+            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+            const colorPaletteContextMenu = document.getElementById('color-palette-context-menu');
+            const colorGrid = document.getElementById('color-grid');
+            const saveSelectedBtn = document.getElementById('save-selected-btn');
+            const savePreviewModal = document.getElementById('save-preview-modal');
+            const closePreviewBtn = document.getElementById('close-preview-btn');
+            const previewContainer = document.getElementById('preview-container');
+            const previewImage = document.getElementById('preview-image');
+            const centerPoint = document.getElementById('center-point');
             const filenameInput = document.getElementById('filename-input');
+            const savePngBtn = document.getElementById('save-png-btn');
+            const saveSvgBtn = document.getElementById('save-svg-btn');
 
-            let selectedItems = new Set();
-            let zIndexCounter = 10;
-            let isMarqueeSelecting = false;
-            let marqueeStart = { x: 0, y: 0 };
-            let dragStartPositions = new Map();
-            let multiSelectModeActive = false;
 
-            const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#2dd4bf', '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#f472b6', '#78716c', '#f9fafb', '#111827'];
-            const svgData = {
-                shapes: ['<circle cx="25" cy="25" r="20" fill="#f87171"/>','<rect x="5" y="5" width="40" height="40" rx="5" fill="#60a5fa"/>','<polygon points="25,5 45,45 5,45" fill="#34d399"/>','<rect x="10" y="15" width="30" height="20" rx="5" fill="#facc15"/>','<polygon points="25,2 32,18 48,18 35,28 40,45 25,35 10,45 15,28 2,18 18,18" fill="#fbbf24"/>','<path d="M25,4 C10,4 4,12 4,20 C4,35 25,46 25,46 C25,46 46,35 46,20 C46,12 40,4 25,4 Z" fill="#f472b6"/>','<polygon points="25,5 45,20 45,35 25,50 5,35 5,20" fill="#a78bfa"/>','<ellipse cx="25" cy="25" rx="20" ry="12" fill="#818cf8"/>','<path d="M10,40 C0,40 0,30 10,30 C10,20 15,20 15,25 C20,15 30,15 35,25 C45,20 40,35 35,35 C30,45 15,45 10,40 Z" fill="#2dd4bf"/>','<path d="M42,35 C42,42 35,45 25,45 C15,45 8,42 8,35 C8,28 15,25 25,25 C35,25 42,28 42,35 Z M15 15 C 15 22 10 25 5 25 C 0 25 0 20 5 15 C 10 10 15 8 15 15 Z" fill="#93c5fd"/>','<path d="M38.1,11.4C35.5,5.1,28.6,2,22,3.7c-5.8,1.5-10.2,6.5-10.7,12.5c-0.5,6.6,3.5,12.6,9.5,14.6c2.4,0.8,5,0.7,7.3-0.3 c5.2-2.3,8.3-7.7,8.2-13.4C36.2,16,37.1,13.3,38.1,11.4z" fill="#c084fc"/>','<path d="M25,5 C35,5 40,15 40,20 C45,25 40,35 35,40 C25,45 15,45 10,35 C5,25 5,15 15,10 C20,5 25,5 25,5 Z" fill="#f9a8d4"/>','<path d="M25,5 L40,40 Q45,45 40,45 L10,45 Q5,45 10,40 L25,5 Z" fill="#a3e635"/>','<path d="M10,20 C5,10 20,5 30,10 C45,15 45,30 35,40 C25,50 5,45 10,30 C15,15 10,20 10,20 Z" fill="#38bdf8"/>','<path d="M12.7,35.5c-4.8,0-8.7-3.9-8.7-8.7c0-4.8,3.9-8.7,8.7-8.7c1.3,0,2.6,0.3,3.7,0.8c1.9-4.8,6.7-8.1,12.1-8.1 c7.2,0,13,5.8,13,13c0,0.4,0,0.7-0.1,1.1c2.5-0.7,5.1,0.7,6.2,3.1c1.1,2.4,0.3,5.2-1.9,6.5c-0.6,0.4-1.2,0.5-1.8,0.5H12.7z" fill="#67e8f9"/>','<path d="M5,25 C5,10 20,5 25,15 C30,5 45,10 45,25 C45,40 30,45 25,35 C20,45 5,40 5,25 Z" fill="#6ee7b7"/>','<polygon points="25,5 45,25 25,45 5,25" fill="#fb923c"/>','<polygon points="10,5 45,5 35,45 0,45" fill="#78716c"/>','<path d="M15 5 A 20 20 0 1 1 15 45 A 15 15 0 1 0 15 5 Z" fill="#fde047"/>','<path d="M25,5 C15,5 10,20 10,25 C10,40 25,45 25,45 C25,45 40,40 40,25 C40,20 35,5 25,5 Z" fill="#7dd3fc"/>','<polygon points="20,5 30,5 30,20 45,20 45,30 30,30 30,45 20,45 20,30 5,30 5,20 20,20" fill="#e879f9"/>','<path d="M5,5 H45 V35 H25 L15,45 V35 H5 Z" fill="#fdba74"/>','<path d="M5,45 A40,40 0 0,1 45,45 L45,35 A30,30 0 0,0 5,35 Z" fill="#86efac"/>','<path d="M25 5 L 28 18 L 42 20 L 32 28 L 35 42 L 25 35 L 15 42 L 18 28 L 8 20 L 22 18 Z" fill="#d8b4fe"/>'],
-                lines: ['<line x1="5" y1="25" x2="45" y2="25" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>','<line x1="25" y1="5" x2="25" y2="45" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>','<line x1="5" y1="5" x2="45" y2="45" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>','<path d="M5 45 Q 25 5, 45 45" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round"/>','<path d="M5 5 Q 25 45, 45 5" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round"/>','<path d="M5 25 C 15 5, 35 45, 45 25" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round"/>','<line x1="5" y1="25" x2="45" y2="25" stroke="currentColor" stroke-width="3" stroke-dasharray="5,5" stroke-linecap="round"/>','<polyline points="5,40 15,10 25,40 35,10 45,40" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>','<path d="M5,25 C15,10 35,40 45,25" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round"/>','<line x1="5" y1="25" x2="45" y2="25" stroke="currentColor" stroke-width="3" stroke-dasharray="2,4" stroke-linecap="round"/>','<line x1="5" y1="25" x2="45" y2="25" stroke="currentColor" stroke-width="3" stroke-dasharray="10,5,2,5" stroke-linecap="round"/>','<polyline points="5,25 15,15 25,25 35,35 45,25" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'],
-                eyes: ['<circle cx="25" cy="25" r="15" fill="white"/><circle cx="25" cy="25" r="7" fill="currentColor"/>','<ellipse cx="25" cy="25" rx="10" ry="18" fill="white"/><circle cx="25" cy="25" r="5" fill="currentColor"/>','<circle cx="25" cy="25" r="15" fill="white"/><circle cx="30" cy="20" r="4" fill="currentColor"/>','<rect x="10" y="10" width="30" height="30" rx="5" fill="white"/><rect x="18" y="18" width="14" height="14" rx="2" fill="currentColor"/>','<path d="M10,35 C15,15 35,15 40,35 Z" fill="white"/><circle cx="25" cy="28" r="5" fill="currentColor"/>','<polygon points="25,10 30,20 40,22 32,30 35,40 25,35 15,40 18,30 10,22 20,20" fill="white"/><circle cx="25" cy="25" r="5" fill="currentColor"/>','<path d="M25,10 C15,10 10,20 10,25 C10,35 25,40 25,40 C25,40 40,35 40,25 C40,20 35,10 25,10 Z" fill="white"/><path d="M25,15 C20,15 18,22 18,25 C18,30 25,32 25,32 C25,32 32,30 32,25 C32,22 30,15 25,15 Z" fill="currentColor" />','<circle cx="25" cy="25" r="15" fill="currentColor"/>','<path d="M10,25 L25,10 L40,25 L25,40 Z" fill="white"/><circle cx="25" cy="25" r="5" fill="currentColor" />','<path d="M10 25 A 15 15 0 0 1 40 25 L 40 30 A 15 15 0 0 1 10 30 Z" fill="white" /><circle cx="25" cy="27" r="4" fill="currentColor"/>','<circle cx="25" cy="25" r="15" fill="white"/><polygon points="23,23 27,23 27,27 23,27" fill="currentColor"/><polygon points="28,18 32,18 32,22 28,22" fill="currentColor" />','<path d="M10,20 L40,15 L38,35 L12,38 Z" fill="white"/><circle cx="25" cy="26" r="6" fill="currentColor"/>']
+            // --- 상태 변수 ---
+            let objectCounter = 1;
+            let isAdminMode = false;
+            let confirmCallback = null;
+            let currentTargetForColor = null;
+
+            // --- 파츠 데이터 정의 ---
+            const partsData = {
+                shapes: [
+                    { type: 'rect', options: { width: 100, height: 100, fill: '#f87171' } },
+                    { type: 'circle', options: { radius: 50, fill: '#fb923c' } },
+                    { type: 'triangle', options: { width: 100, height: 100, fill: '#facc15' } },
+                    { type: 'path', path: 'M 50 0 L 61.2 34.5 H 98 L 73.4 55.9 L 84.5 90.5 L 50 69 L 15.5 90.5 L 26.6 55.9 L 2 34.5 H 38.8 Z', options: { fill: '#4ade80' } },
+                    { type: 'path', path: 'M 50 30 C 30 10, 10 30, 10 50 C 10 70, 50 90, 50 90 C 50 90, 90 70, 90 50 C 90 30, 70 10, 50 30 Z', options: { fill: '#2dd4bf' } },
+                    { type: 'path', path: 'M 20 70 A 20 20 0 0 1 20 50 C 20 30, 40 30, 50 40 C 60 30, 80 30, 80 50 A 20 20 0 0 1 80 70 Z', options: { fill: '#38bdf8' } },
+                    { type: 'path', path: 'M 50 10 C 80 10, 90 40, 90 50 S 80 90, 50 90 S 20 90, 10 50 S 20 10, 50 10 Z', options: { fill: '#818cf8' } },
+                    { type: 'path', path: 'M 20 50 Q 50 10, 80 50 Q 50 90, 20 50 Z', options: { fill: '#c084fc' } },
+                    { type: 'path', path: 'M 40 0 H 60 V 40 H 100 V 60 H 60 V 100 H 40 V 60 H 0 V 40 H 40 Z', options: { fill: '#f87171' } },
+                    { type: 'path', path: 'M 50 0 L 100 50 L 50 100 L 0 50 Z', options: { fill: '#fb923c' } },
+                    { type: 'path', path: 'M 50 0 L 93.3 25 V 75 L 50 100 L 6.7 75 V 25 Z', options: { fill: '#facc15' } },
+                    { type: 'path', path: 'M 10 10 Q 5 10, 5 15 V 65 Q 5 70, 10 70 H 30 L 20 85 L 40 70 H 90 Q 95 70, 95 65 V 15 Q 95 10, 90 10 Z', options: { fill: '#4ade80' } },
+                    { type: 'path', path: 'M 50 0 A 50 50 0 1 0 50 100 A 40 40 0 1 1 50 0 Z', options: { fill: '#2dd4bf' } },
+                    { type: 'path', path: 'M 0 0 H 100 V 100 H 0 Z M 20 20 H 80 V 80 H 20 Z', options: { fill: '#38bdf8', fillRule: 'evenodd' } },
+                    { type: 'path', path: 'M 50,0 L 79.39,20.61 L 90.45,50 L 79.39,79.39 L 50,90.45 L 20.61,79.39 L 9.55,50 L 20.61,20.61 Z', options: { fill: '#818cf8' } },
+
+                ],
+                lines: [
+                    { type: 'path', path: 'M 0 0 Q 50 50 100 0', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 0 50 C 25 0, 75 100, 100 50', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 0 50 Q 25 0, 50 50 T 100 50', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 10 10 C 20 80, 80 20, 90 90', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 60 0 L 40 40 L 70 40 L 30 100', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 10 90 A 80 80 0 0 1 90 90', options: { stroke: '#555555', strokeWidth: 8, fill: '', strokeDashArray: [15, 10] } },
+                    { type: 'path', path: 'M 10 40 Q 50 10, 90 40 M 10 60 Q 50 90, 90 60', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 0 50 H 100 L 75 25 M 100 50 L 75 75', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 50 50 m -40 0 a 40 40 0 1 1 80 0 a 30 30 0 1 1 -60 0 a 20 20 0 1 1 40 0', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 0 0 L 100 100 M 0 100 L 100 0', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 0 50 L 25 0 L 50 50 L 75 0 L 100 50', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 0 50 H 100', options: { stroke: '#555555', strokeWidth: 8, fill: '', strokeDashArray: [10, 5] } },
+                    { type: 'path', path: 'M 0 50 H 100', options: { stroke: '#555555', strokeWidth: 8, fill: '', strokeDashArray: [2, 6], strokeLineCap: 'round' } },
+                    { type: 'path', path: 'M 0 50 C 25 0, 25 100, 50 50 S 75 0, 100 50', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                    { type: 'path', path: 'M 5 50 Q 25 40, 50 50 T 95 50', options: { stroke: '#555555', strokeWidth: 10, fill: '' } },
+                    { type: 'path', path: 'M 25 75 L 0 50 L 25 25 M 75 25 L 100 50 L 75 75 M 0 50 H 100', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
+                ],
+            };
+            
+            // --- 색상 팔레트 데이터 ---
+            const colors = ['#e11d48', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#44403c', '#a1a1aa', '#ffffff', '#000000', '#cccccc', '#ff0000'];
+
+            // --- Fabric.js 캔버스 초기화 ---
+            const canvas = new fabric.Canvas(canvasEl, { 
+                preserveObjectStacking: true,
+                backgroundColor: 'rgba(255, 255, 255, 0)',
+             });
+            const resizeCanvas = () => {
+                const { width, height } = sketchbookWrapper.getBoundingClientRect();
+                canvas.setWidth(width).setHeight(height).renderAll();
+            };
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            fabric.Object.prototype.transparentCorners = false;
+            fabric.Object.prototype.cornerColor = '#3b82f6';
+            fabric.Object.prototype.cornerStyle = 'circle';
+            fabric.Object.prototype.borderColor = '#3b82f6';
+            fabric.Object.prototype.borderDashArray = [5, 5];
+            fabric.Object.prototype.cornerSize = 12;
+            fabric.Object.prototype.rotatingPointOffset = 30;
+            
+            // --- 커스텀 속성 추가 헬퍼 함수 ---
+            const addCustomProperties = (obj, namePrefix = '오브젝트') => {
+                 obj.uuid = Date.now() + Math.random();
+                 obj.name = `${namePrefix} ${objectCounter++}`;
+                 return obj;
             };
 
-            function initialize() {
-                setupTabs();
-                setupAssetPanels();
-                setupColorSwatchesPanel();
-                setupGlobalListeners();
-                setupImageExportControls();
-                document.querySelector('.tab-button[data-tab="shapes"]').click();
-            }
-
-            function setupTabs() {
-                document.querySelectorAll('.tab-button').forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        document.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-                        document.getElementById(`${tab.dataset.tab}-panel`).classList.remove('hidden');
-                        clearSelection();
-                    });
-                });
-            }
-
-            function setupAssetPanels() {
-                Object.keys(svgData).forEach(category => {
-                    const panel = document.getElementById(`${category}-panel`);
-                    svgData[category].forEach(svgHTML => {
-                        const itemWrapper = document.createElement('div');
-                        let itemClass = 'aspect-square flex items-center justify-center p-2 rounded-lg bg-slate-100 hover:bg-blue-100 cursor-pointer transition-colors duration-200';
-                        if (category === 'shapes') itemClass = 'aspect-square flex items-center justify-center p-2 rounded-lg bg-transparent hover:bg-slate-100 cursor-pointer transition-colors duration-200';
-                        else itemWrapper.classList.add('text-slate-700');
-                        itemWrapper.className = itemClass;
-                        itemWrapper.innerHTML = `<svg viewBox="0 0 50 50" class="w-full h-full pointer-events-none">${svgHTML}</svg>`;
-                        itemWrapper.addEventListener('click', () => addToSketchbook(svgHTML, category));
-                        panel.appendChild(itemWrapper);
-                    });
-                });
-            }
-
-            function setupColorSwatchesPanel() {
-                colors.forEach(color => {
-                    const swatch = document.createElement('div');
-                    swatch.className = 'color-swatch';
-                    swatch.style.backgroundColor = color;
-                    swatch.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (selectedItems.size === 1) {
-                            const singleItem = selectedItems.values().next().value;
-                             if(singleItem.dataset.category === 'shapes'){
-                                const svgElement = singleItem.querySelector('.sketch-item svg > *');
-                                if (svgElement) svgElement.setAttribute('fill', color);
-                            }
-                        }
-                        hideColorSwatchesPanel();
-                    });
-                    colorSwatchesPanel.appendChild(swatch);
-                });
-            }
-            
-            function setupImageExportControls(){
-                saveImageBtn.addEventListener('click', openExportModal);
-                saveAllBtn.addEventListener('click', saveEntireSketchbook);
-                cancelExportBtn.addEventListener('click', () => imageExportModal.classList.add('hidden'));
-                confirmExportBtn.addEventListener('click', saveCanvasAsPNG);
-
-                let isDraggingHandle = false;
-                centerPointHandle.addEventListener('pointerdown', () => isDraggingHandle = true);
-                document.addEventListener('pointerup', () => isDraggingHandle = false);
-                previewCanvasContainer.addEventListener('pointermove', (e) => {
-                    if(!isDraggingHandle) return;
-                    const rect = previewCanvasContainer.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
+            // --- 파츠 패널 렌더링 ---
+            const renderParts = (category) => {
+                partsContainer.innerHTML = '';
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-3 gap-3';
+                partsData[category].forEach((part, index) => {
+                    const svgContainer = document.createElement('div');
+                    svgContainer.className = 'part-item relative aspect-square bg-gray-100 rounded-lg flex items-center justify-center cursor-pointer transition-transform p-2';
                     
-                    const containerWidth = previewCanvasContainer.offsetWidth;
-                    const containerHeight = previewCanvasContainer.offsetHeight;
-
-                    const handleX = Math.max(0, Math.min(containerWidth, x));
-                    const handleY = Math.max(0, Math.min(containerHeight, y));
-
-                    centerPointHandle.style.left = `${handleX - 12}px`;
-                    centerPointHandle.style.top = `${handleY - 12}px`;
-                });
-            }
-            
-            function isOverlapping(rect1, rect2) {
-                return !(rect1.right < rect2.left || rect1.left > rect2.right || rect1.bottom < rect2.top || rect1.top > rect2.bottom);
-            }
-
-            function setupGlobalListeners() {
-                sketchbook.addEventListener('pointerdown', (e) => {
-                    if (e.target === sketchbook) {
-                        if (multiSelectModeActive) {
-                            multiSelectModeActive = false;
-                            sketchbook.classList.remove('multi-select-mode');
+                     if (part.type === 'svg') {
+                        svgContainer.innerHTML = part.svgString;
+                        const innerSvg = svgContainer.querySelector('svg');
+                        if (innerSvg) { innerSvg.setAttribute('width', '100%'); innerSvg.setAttribute('height', '100%'); }
+                    } else {
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.setAttribute('viewBox', '0 0 100 100');
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        
+                        if (part.type === 'rect') {
+                            const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                            el.setAttribute('x', 0); el.setAttribute('y', 0); el.setAttribute('width', 100); el.setAttribute('height', 100); el.setAttribute('fill', part.options.fill);
+                            svg.appendChild(el);
+                        } else if (part.type === 'circle') {
+                            const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                            el.setAttribute('cx', 50); el.setAttribute('cy', 50); el.setAttribute('r', 50); el.setAttribute('fill', part.options.fill);
+                            svg.appendChild(el);
+                        } else if (part.type === 'triangle') {
+                             const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                             el.setAttribute('d', 'M 50 0 L 100 100 L 0 100 Z'); el.setAttribute('fill', part.options.fill);
+                             svg.appendChild(el);
+                        } else if (part.type === 'path') {
+                            const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                            el.setAttribute('d', part.path);
+                            el.setAttribute('fill', part.options.fill || 'none');
+                            el.setAttribute('stroke', part.options.stroke || 'none');
+                            el.setAttribute('stroke-width', part.options.strokeWidth || 0);
+                            if(part.options.fillRule) el.setAttribute('fill-rule', part.options.fillRule);
+                            svg.appendChild(el);
+                        } else if (part.type === 'group') {
+                            part.items.forEach(item => {
+                                 if (item.type === 'circle') {
+                                    const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                                    el.setAttribute('cx', item.options.left ? item.options.left + item.options.radius : 50); 
+                                    el.setAttribute('cy', item.options.top ? item.options.top + item.options.radius : 50);
+                                    el.setAttribute('r', item.options.radius); el.setAttribute('fill', item.options.fill);
+                                    if(item.options.stroke) el.setAttribute('stroke', item.options.stroke);
+                                    if(item.options.strokeWidth) el.setAttribute('stroke-width', item.options.strokeWidth);
+                                    svg.appendChild(el);
+                                 } else if (item.type === 'rect') {
+                                    const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                                    el.setAttribute('x', 25); el.setAttribute('y', 35);
+                                    el.setAttribute('width', 50); el.setAttribute('height', 30); el.setAttribute('fill', item.options.fill);
+                                    el.setAttribute('rx', 15); el.setAttribute('ry', 15);
+                                    svg.appendChild(el);
+                                 } else if (item.type === 'path') {
+                                    const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                                    el.setAttribute('d', item.options.path);
+                                    el.setAttribute('fill', 'none');
+                                    el.setAttribute('stroke', item.options.stroke || 'none');
+                                    el.setAttribute('stroke-width', item.options.strokeWidth || 0);
+                                    svg.appendChild(el);
+                                 }
+                            });
                         }
-                        clearSelection();
-
-                        if (e.pointerType === 'mouse') {
-                            isMarqueeSelecting = true;
-                            const sketchbookRect = sketchbook.getBoundingClientRect();
-                            marqueeStart.x = e.clientX - sketchbookRect.left;
-                            marqueeStart.y = e.clientY - sketchbookRect.top;
-                            selectionBox.style.left = `${marqueeStart.x}px`;
-                            selectionBox.style.top = `${marqueeStart.y}px`;
-                            selectionBox.style.width = '0px';
-                            selectionBox.style.height = '0px';
-                            selectionBox.classList.remove('hidden');
-                        }
+                        svgContainer.appendChild(svg);
                     }
-                });
-                
-                document.addEventListener('pointermove', (e) => {
-                    if (!isMarqueeSelecting) return;
-                    const sketchbookRect = sketchbook.getBoundingClientRect();
-                    const currentX = e.clientX - sketchbookRect.left;
-                    const currentY = e.clientY - sketchbookRect.top;
 
-                    const left = Math.min(marqueeStart.x, currentX);
-                    const top = Math.min(marqueeStart.y, currentY);
-                    const width = Math.abs(currentX - marqueeStart.x);
-                    const height = Math.abs(currentY - marqueeStart.y);
-
-                    selectionBox.style.left = `${left}px`;
-                    selectionBox.style.top = `${top}px`;
-                    selectionBox.style.width = `${width}px`;
-                    selectionBox.style.height = `${height}px`;
-
-                    const selBoxRect = selectionBox.getBoundingClientRect();
-                    document.querySelectorAll('.sketch-item-wrapper').forEach(item => {
-                        const itemRect = item.getBoundingClientRect();
-                        if (isOverlapping(selBoxRect, itemRect)) {
-                            selectedItems.add(item);
-                        } else {
-                            if(!e.shiftKey) selectedItems.delete(item);
-                        }
+                    svgContainer.addEventListener('click', () => {
+                        const activeTab = document.querySelector('.tab-active').id.split('-')[1];
+                        let namePrefix = '도형';
+                        if (activeTab === 'lines') namePrefix = '선';
+                        addPartToCanvas(part, namePrefix);
                     });
-                    updateSelectionUI();
-                });
-
-                document.addEventListener('pointerup', () => {
-                    if (isMarqueeSelecting) {
-                        isMarqueeSelecting = false;
-                        selectionBox.classList.add('hidden');
-                    }
-                });
-
-                document.addEventListener('keydown', (e) => {
-                    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItems.size > 0) {
-                         [...selectedItems].forEach(item => deleteItem(item));
-                    }
-                });
-            }
-
-            function updateSelectionUI() {
-                document.querySelectorAll('.sketch-item-wrapper').forEach(item => {
-                    item.classList.remove('selected', 'has-controls');
-                });
-
-                selectedItems.forEach(item => {
-                    item.classList.add('selected');
-                });
-
-                if (selectedItems.size === 1) {
-                    selectedItems.values().next().value.classList.add('has-controls');
-                }
-                
-                saveImageBtn.classList.toggle('hidden', selectedItems.size <= 1);
-                sketchbook.classList.toggle('multi-select-mode', multiSelectModeActive);
-            }
-
-            function clearSelection() {
-                selectedItems.clear();
-                updateSelectionUI();
-                hideColorSwatchesPanel();
-            }
-            
-            function showColorSwatchesPanelAtElement(element) {
-                if (element.dataset.category !== 'shapes') return;
-                colorSwatchesPanel.style.display = 'grid';
-                const rect = element.getBoundingClientRect();
-                const panelRect = colorSwatchesPanel.getBoundingClientRect();
-                let top = rect.top - panelRect.height - 10;
-                let left = rect.left + (rect.width / 2) - (panelRect.width / 2);
-
-                if (top < 10) top = rect.bottom + 10;
-                if (left < 10) left = 10;
-                if (left + panelRect.width > window.innerWidth - 10) left = window.innerWidth - panelRect.width - 10;
-
-                colorSwatchesPanel.style.top = `${top + window.scrollY}px`;
-                colorSwatchesPanel.style.left = `${left + window.scrollX}px`;
-            }
-
-            function hideColorSwatchesPanel() { colorSwatchesPanel.style.display = 'none'; }
-
-            function addToSketchbook(svgHTML, category) {
-                if (placeholderText) placeholderText.style.display = 'none';
-                const wrapper = document.createElement('div');
-                wrapper.className = 'sketch-item-wrapper absolute';
-                wrapper.dataset.category = category;
-                wrapper.style.width = '100px';
-                wrapper.style.height = '100px';
-                wrapper.style.left = `${sketchbook.clientWidth / 2 - 50}px`;
-                wrapper.style.top = `${sketchbook.clientHeight / 2 - 50}px`;
-                let itemClass = 'sketch-item w-full h-full';
-                if (category !== 'shapes') itemClass += ' text-slate-800';
-                wrapper.innerHTML = `
-                    <div class="controls">
-                        <div class="control-handle rotate-handle"></div>
-                        <div class="control-handle resize-handle nw"></div><div class="control-handle resize-handle ne"></div>
-                        <div class="control-handle resize-handle sw"></div><div class="control-handle resize-handle se"></div>
-                    </div>
-                    <div class="${itemClass}"><svg viewBox="0 0 50 50" class="w-full h-full pointer-events-none">${svgHTML}</svg></div>`;
-                sketchbook.appendChild(wrapper);
-                makeInteractive(wrapper);
-                clearSelection();
-                selectedItems.add(wrapper);
-                updateSelectionUI();
-                wrapper.style.zIndex = zIndexCounter++;
-            }
-            
-            function getBoundingBox(items, useOffsetCoords = true) {
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                if(items.size === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-                
-                items.forEach(item => {
-                    const rect = item.getBoundingClientRect();
-                    const w = rect.width;
-                    const h = rect.height;
-                    const left = useOffsetCoords ? item.offsetLeft : rect.left;
-                    const top = useOffsetCoords ? item.offsetTop : rect.top;
-                    const centerX = left + w / 2;
-                    const centerY = top + h / 2;
-
-                    const transform = new DOMMatrix(getComputedStyle(item).transform);
-                    const rotation = Math.atan2(transform.b, transform.a);
-
-                    const corners = [ { x: -w / 2, y: -h / 2 }, { x: w / 2, y: -h / 2 }, { x: w / 2, y: h / 2 }, { x: -w / 2, y: h / 2 } ];
-
-                    corners.forEach(corner => {
-                        const rotatedX = corner.x * Math.cos(rotation) - corner.y * Math.sin(rotation);
-                        const rotatedY = corner.x * Math.sin(rotation) + corner.y * Math.cos(rotation);
-                        const finalX = centerX + rotatedX;
-                        const finalY = centerY + rotatedY;
-                        minX = Math.min(minX, finalX);
-                        minY = Math.min(minY, finalY);
-                        maxX = Math.max(maxX, finalX);
-                        maxY = Math.max(maxY, finalY);
-                    });
-                });
-                
-                return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY, centerX: (minX + maxX) / 2, centerY: (minY + maxY) / 2 };
-            }
-
-            async function renderStaticPreview() {
-                if (selectedItems.size === 0) return;
-                
-                const ctx = previewCanvas.getContext('2d');
-                const bbox = getBoundingBox(selectedItems, false);
-
-                previewCanvas.width = bbox.width;
-                previewCanvas.height = bbox.height;
-                ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-
-                const drawingPromises = [...selectedItems].map(item => {
-                    return new Promise((resolve) => {
-                        const svgString = new XMLSerializer().serializeToString(item.querySelector('svg'));
-                        const img = new Image();
-                        const rect = item.getBoundingClientRect();
-                        img.onload = () => {
-                            const transform = new DOMMatrix(getComputedStyle(item).transform);
-                            const rotation = Math.atan2(transform.b, transform.a);
-
-                            ctx.save();
-                            ctx.translate(rect.left - bbox.minX + rect.width / 2, rect.top - bbox.minY + rect.height / 2);
-                            ctx.rotate(rotation);
-                            ctx.drawImage(img, -rect.width / 2, -rect.height / 2, rect.width, rect.height);
-                            ctx.restore();
-                            resolve();
+                    
+                    if (isAdminMode) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'admin-delete-btn';
+                        deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                        deleteBtn.title = "파츠 삭제";
+                        deleteBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            showConfirmModal("파츠 삭제", "이 파츠를 영구적으로 삭제하시겠습니까?", () => {
+                                partsData[category].splice(index, 1);
+                                renderParts(category);
+                            });
                         };
-                        img.onerror = () => resolve();
-                        img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
-                    });
+                        svgContainer.appendChild(deleteBtn);
+                    }
+                    grid.appendChild(svgContainer);
                 });
-                return Promise.all(drawingPromises);
-            }
+                partsContainer.appendChild(grid);
+            };
 
-            async function openExportModal() {
-                imageExportModal.classList.remove('hidden');
-                if (selectedItems.size === 0) return;
-                
-                await renderStaticPreview();
+            // --- 레이어 패널 렌더링 ---
+            const updateLayerList = (container) => {
+                container.innerHTML = '';
+                const objects = canvas.getObjects().slice().reverse();
 
-                const bbox = getBoundingBox(selectedItems, false);
-                const relativeCenterX = bbox.width > 0 ? (bbox.centerX - bbox.minX) / bbox.width : 0.5;
-                const relativeCenterY = bbox.height > 0 ? (bbox.centerY - bbox.minY) / bbox.height : 0.5;
-
-                const containerWidth = previewCanvasContainer.offsetWidth;
-                const containerHeight = previewCanvasContainer.offsetHeight;
-                
-                const canvasAspectRatio = previewCanvas.width / previewCanvas.height || 1;
-                const containerAspectRatio = containerWidth / containerHeight;
-                
-                let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
-                if (canvasAspectRatio > containerAspectRatio) {
-                    renderWidth = containerWidth;
-                    renderHeight = containerWidth / canvasAspectRatio;
-                    offsetY = (containerHeight - renderHeight) / 2;
-                } else {
-                    renderHeight = containerHeight;
-                    renderWidth = containerHeight * canvasAspectRatio;
-                    offsetX = (containerWidth - renderWidth) / 2;
-                }
-
-                const handleX = offsetX + renderWidth * relativeCenterX;
-                const handleY = offsetY + renderHeight * relativeCenterY;
-
-                centerPointHandle.style.left = `${handleX - 12}px`;
-                centerPointHandle.style.top = `${handleY - 12}px`;
-            }
-
-            function saveCanvasAsPNG() {
-                if (selectedItems.size === 0) return;
-                
-                const tempCanvas = document.createElement('canvas');
-                const ctx = tempCanvas.getContext('2d');
-                const scaleFactor = 3; // For high-quality rendering
-
-                const bbox = getBoundingBox(selectedItems, true);
-                
-                const handleRect = centerPointHandle.getBoundingClientRect();
-                const containerRect = previewCanvasContainer.getBoundingClientRect();
-                const handleCenterX = handleRect.left + handleRect.width / 2 - containerRect.left;
-                const handleCenterY = handleRect.top + handleRect.height / 2 - containerRect.top;
-
-                const canvasAspectRatio = previewCanvas.width / previewCanvas.height || 1;
-                const containerAspectRatio = containerRect.width / containerRect.height;
-                let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
-                 if (canvasAspectRatio > containerAspectRatio) {
-                    renderWidth = containerRect.width;
-                    renderHeight = containerRect.width / canvasAspectRatio;
-                    offsetY = (containerRect.height - renderHeight) / 2;
-                } else {
-                    renderHeight = containerRect.height;
-                    renderWidth = containerRect.height * canvasAspectRatio;
-                    offsetX = (containerRect.width - renderWidth) / 2;
-                }
-                
-                const relativeX = renderWidth > 0 ? (handleCenterX - offsetX) / renderWidth : 0.5;
-                const relativeY = renderHeight > 0 ? (handleCenterY - offsetY) / renderHeight : 0.5;
-
-                const cropCenterX = bbox.minX + relativeX * bbox.width;
-                const cropCenterY = bbox.minY + relativeY * bbox.height;
-
-                const maxDistX = Math.max(cropCenterX - bbox.minX, bbox.maxX - cropCenterX);
-                const maxDistY = Math.max(cropCenterY - bbox.minY, bbox.maxY - cropCenterY);
-                
-                const finalWidth = maxDistX * 2;
-                const finalHeight = maxDistY * 2;
-                
-                tempCanvas.width = finalWidth * scaleFactor;
-                tempCanvas.height = finalHeight * scaleFactor;
-                ctx.scale(scaleFactor, scaleFactor);
-
-                const drawingPromises = [...selectedItems].map(item => {
-                    return new Promise((resolve) => {
-                        const svgElement = item.querySelector('svg');
-                        const rect = item.getBoundingClientRect();
-                        const w = rect.width;
-                        const h = rect.height;
-                        
-                        const clonedSvg = svgElement.cloneNode(true);
-                        clonedSvg.setAttribute('width', w);
-                        clonedSvg.setAttribute('height', h);
-                        const svgString = new XMLSerializer().serializeToString(clonedSvg);
-                        
-                        const img = new Image(w, h);
-                        img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
-                        
-                        img.onload = () => {
-                            const itemX = item.offsetLeft;
-                            const itemY = item.offsetTop;
-                            const transform = new DOMMatrix(getComputedStyle(item).transform);
-                            const rotation = Math.atan2(transform.b, transform.a);
-                            
-                            ctx.save();
-                            ctx.translate(
-                                (finalWidth / 2) + (itemX + w / 2 - cropCenterX), 
-                                (finalHeight / 2) + (itemY + h / 2 - cropCenterY)
-                            );
-                            ctx.rotate(rotation);
-                            ctx.drawImage(img, -w / 2, -h / 2, w, h);
-                            ctx.restore();
-                            resolve();
-                        };
-                        img.onerror = resolve;
-                    });
-                });
-                
-                Promise.all(drawingPromises).then(() => {
-                    let filename = filenameInput.value.trim().replace(/[^a-z0-9-_\.]/gi, '_');
-                    if (!filename) filename = 'character-part';
-
-                    const link = document.createElement('a');
-                    link.download = `${filename}.png`;
-                    link.href = tempCanvas.toDataURL('image/png');
-                    link.click();
-                    imageExportModal.classList.add('hidden');
-                });
-            }
-
-
-            function deleteItem(itemWrapper) {
-                selectedItems.delete(itemWrapper);
-                itemWrapper.remove();
-                if (sketchbook.childElementCount <= 3) placeholderText.style.display = 'flex';
-                hideColorSwatchesPanel();
-                updateSelectionUI();
-            }
-            
-            async function saveEntireSketchbook() {
-                const items = sketchbook.querySelectorAll('.sketch-item-wrapper');
-                if (items.length === 0) {
-                    alert("스케치북에 저장할 아이템이 없습니다.");
+                if (objects.length === 0) {
+                    container.innerHTML = `<div class="text-center text-gray-500 p-4">레이어가 없습니다.</div>`;
                     return;
                 }
+                
+                let draggedLayerItem = null;
 
-                const tempCanvas = document.createElement('canvas');
-                const ctx = tempCanvas.getContext('2d');
-                const scaleFactor = 3;
+                objects.forEach(obj => {
+                    const item = document.createElement('div');
+                    item.className = 'layer-item';
+                    item.draggable = true;
+                    item.dataset.uuid = obj.uuid;
 
-                const sketchbookRect = sketchbook.getBoundingClientRect();
-                tempCanvas.width = sketchbookRect.width * scaleFactor;
-                tempCanvas.height = sketchbookRect.height * scaleFactor;
-                ctx.scale(scaleFactor, scaleFactor);
+                    if (canvas.getActiveObjects().includes(obj)) item.classList.add('selected');
 
-                const sortedItems = [...items].sort((a, b) => (parseInt(a.style.zIndex) || 0) - (parseInt(b.style.zIndex) || 0));
+                    const isLocked = !obj.selectable;
 
-                const drawingPromises = sortedItems.map(item => {
-                    return new Promise((resolve) => {
-                        const svgElement = item.querySelector('svg');
-                        const rect = item.getBoundingClientRect();
-                        const w = rect.width;
-                        const h = rect.height;
+                    item.innerHTML = `
+                        <div class="layer-item-drag-handle text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 10a2 2 0 1 1 0 4a2 2 0 0 1 0-4zm0-6a2 2 0 1 1 0 4a2 2 0 0 1 0-4zm0 12a2 2 0 1 1 0 4a2 2 0 0 1 0-4z"/></svg>
+                        </div>
+                        <input type="text" class="layer-item-name bg-transparent outline-none w-full" value="${obj.name || '오브젝트'}" readonly>
+                        <div class="layer-item-controls flex items-center">
+                            <button class="toggle-vis-btn ${obj.visible ? 'toggled-on' : ''}" title="보이기/숨기기">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button class="toggle-lock-btn ${isLocked ? 'locked' : ''}" title="잠금/해제">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${isLocked ? '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>' : '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 5-5v0a5 5 0 0 1 5 5v4"></path>'}</svg>
+                            </button>
+                            <button class="delete-layer-btn" title="레이어 삭제">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-500"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(item);
 
-                        const clonedSvg = svgElement.cloneNode(true);
-                        clonedSvg.setAttribute('width', w);
-                        clonedSvg.setAttribute('height', h);
-                        const svgString = new XMLSerializer().serializeToString(clonedSvg);
+                    const nameInput = item.querySelector('.layer-item-name');
+                    const findObjectByUuid = (uuid) => canvas.getObjects().find(obj => obj.uuid == uuid);
 
-                        const img = new Image(w, h);
-                        img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
-
-                        img.onload = () => {
-                            const itemX = item.offsetLeft;
-                            const itemY = item.offsetTop;
-                            const transform = new DOMMatrix(getComputedStyle(item).transform);
-                            const rotation = Math.atan2(transform.b, transform.a);
-
-                            ctx.save();
-                            ctx.translate(itemX + w / 2, itemY + h / 2);
-                            ctx.rotate(rotation);
-                            ctx.drawImage(img, -w / 2, -h / 2, w, h);
-                            ctx.restore();
-                            resolve();
-                        };
-                        img.onerror = resolve;
-                    });
-                });
-
-                await Promise.all(drawingPromises);
-
-                const link = document.createElement('a');
-                link.download = 'my-character.png';
-                link.href = tempCanvas.toDataURL('image/png');
-                link.click();
-            }
-
-
-            function makeInteractive(wrapper) {
-                let currentAction = null, activeHandle = null, startX, startY, startWidth, startHeight, rect, aspectRatio, pressTimer;
-                let hasMoved = false;
-
-                wrapper.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    if (wrapper.dataset.category === 'shapes') {
-                        clearSelection();
-                        selectedItems.add(wrapper);
-                        updateSelectionUI();
-                        showColorSwatchesPanelAtElement(wrapper);
-                    }
-                });
-
-                function onPointerDown(e) {
-                    if (e.detail > 1) return;
-                    e.stopPropagation();
-                    
-                    hasMoved = false;
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    
-                    pressTimer = setTimeout(() => {
-                        if (!hasMoved) { // Long press detected
-                            if (e.pointerType === 'touch') {
-                                multiSelectModeActive = true;
-                                if (!selectedItems.has(wrapper)) {
-                                    selectedItems.add(wrapper);
+                    item.addEventListener('click', (e) => {
+                        if (e.target.closest('button') || e.target.closest('input')) return;
+                        const targetObj = findObjectByUuid(obj.uuid);
+                        if (targetObj) {
+                            if (e.shiftKey) {
+                                // Shift-click to add to selection
+                                const activeSelection = canvas.getActiveObject();
+                                if (activeSelection && activeSelection.type === 'activeSelection') {
+                                    activeSelection.addWithUpdate(targetObj);
+                                } else if (activeSelection) {
+                                    const newSelection = new fabric.ActiveSelection([activeSelection, targetObj], { canvas: canvas });
+                                    canvas.setActiveObject(newSelection);
                                 }
-                                updateSelectionUI();
+                                canvas.renderAll();
+                            } else {
+                                canvas.setActiveObject(targetObj).renderAll();
                             }
                         }
-                    }, 500);
-
-                    document.addEventListener('pointermove', onPointerMove);
-                    document.addEventListener('pointerup', onPointerUp);
-                }
-                
-                function onPointerMove(e) {
-                    if (!hasMoved) {
-                        const dx = e.clientX - startX;
-                        const dy = e.clientY - startY;
-                        if (Math.sqrt(dx*dx + dy*dy) > 5) {
-                            hasMoved = true;
-                            clearTimeout(pressTimer);
-                        }
-                    }
-
-                    if (hasMoved && !currentAction) {
-                        startInteraction(e);
-                    }
-                    
-                    if (!currentAction) return;
-                    e.preventDefault();
-                    
-                    const dx = e.clientX - startX;
-                    const dy = e.clientY - startY;
-                    const activeItem = selectedItems.size === 1 ? selectedItems.values().next().value : wrapper;
-
-                    switch (currentAction) {
-                        case 'drag':
-                            let isOverTrash = false;
-                            selectedItems.forEach(item => {
-                                const startPos = dragStartPositions.get(item);
-                                item.style.left = `${startPos.left + dx}px`;
-                                item.style.top = `${startPos.top + dy}px`;
-                                if (!isOverTrash) {
-                                    const itemRect = item.getBoundingClientRect();
-                                    const trashRect = trashCan.getBoundingClientRect();
-                                    if (isOverlapping(itemRect, trashRect)) isOverTrash = true;
-                                }
-                            });
-                            if (isOverTrash) trashCan.classList.add('hover');
-                            else trashCan.classList.remove('hover');
-                            break;
-                        case 'rotate':
-                            const currentRect = activeItem.getBoundingClientRect();
-                            const centerX = currentRect.left + currentRect.width / 2;
-                            const centerY = currentRect.top + currentRect.height / 2;
-                            const moveX = e.clientX - centerX;
-                            const moveY = e.clientY - centerY;
-                            const moveAngle = Math.atan2(moveY, moveX);
-                            const angle = moveAngle - parseFloat(activeItem.dataset.startAngle) + parseFloat(activeItem.dataset.currentRotation);
-                            activeItem.style.transform = `rotate(${angle}rad)`;
-                            break;
-                        case 'resize':
-                            const startLeft = parseFloat(dragStartPositions.get(activeItem).left);
-                            const startTop = parseFloat(dragStartPositions.get(activeItem).top);
-                            let newWidth;
-                            if (activeHandle.classList.contains('se') || activeHandle.classList.contains('ne')) { newWidth = startWidth + dx; } 
-                            else { newWidth = startWidth - dx; }
-                            if (newWidth < 20) newWidth = 20;
-                            const newHeight = newWidth / aspectRatio;
-                            let newLeft = startLeft, newTop = startTop;
-                            if (activeHandle.classList.contains('nw') || activeHandle.classList.contains('sw')) { newLeft = startLeft + (startWidth - newWidth); }
-                            if (activeHandle.classList.contains('nw') || activeHandle.classList.contains('ne')) { newTop = startTop + (startHeight - newHeight); }
-                            activeItem.style.width = `${newWidth}px`;
-                            activeItem.style.height = `${newHeight}px`;
-                            activeItem.style.left = `${newLeft}px`;
-                            activeItem.style.top = `${newTop}px`;
-                            break;
-                    }
-                }
-
-                function onPointerUp(e) {
-                    clearTimeout(pressTimer);
-                    
-                    if (!hasMoved) { // This was a tap
-                        if(multiSelectModeActive){
-                            if(selectedItems.has(wrapper)) selectedItems.delete(wrapper);
-                            else selectedItems.add(wrapper);
-                        } else {
-                            clearSelection();
-                            selectedItems.add(wrapper);
-                        }
-                        updateSelectionUI();
-                    }
-
-                    if (currentAction === 'drag') {
-                        if (trashCan.classList.contains('hover')) {
-                             [...selectedItems].forEach(item => deleteItem(item));
-                        }
-                        trashCan.classList.remove('active', 'hover');
-                    }
-                    currentAction = null;
-                    activeHandle = null;
-                    document.removeEventListener('pointermove', onPointerMove);
-                    document.removeEventListener('pointerup', onPointerUp);
-                }
-                
-                function startInteraction(e) {
-                    const target = e.target;
-                    
-                    if (!selectedItems.has(wrapper)) {
-                        if (!e.shiftKey && !multiSelectModeActive) clearSelection();
-                        selectedItems.add(wrapper);
-                        updateSelectionUI();
-                    }
-                    
-                    rect = wrapper.getBoundingClientRect();
-                    startWidth = rect.width;
-                    startHeight = rect.height;
-                    aspectRatio = startWidth / startHeight;
-
-                    wrapper.style.zIndex = zIndexCounter++;
-                    selectedItems.forEach(item => {
-                        if (item !== wrapper) item.style.zIndex = zIndexCounter++;
                     });
 
-                    activeHandle = target;
-                    dragStartPositions.clear();
-                    selectedItems.forEach(item => {
-                        dragStartPositions.set(item, { left: item.offsetLeft, top: item.offsetTop });
+                    nameInput.addEventListener('dblclick', () => { nameInput.readOnly = false; nameInput.select(); });
+                    nameInput.addEventListener('blur', () => { nameInput.readOnly = true; const targetObj = findObjectByUuid(obj.uuid); if(targetObj) targetObj.name = nameInput.value; });
+                    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') nameInput.blur(); });
+
+                    item.querySelector('.toggle-vis-btn').addEventListener('click', (e) => { e.stopPropagation(); obj.set('visible', !obj.visible); canvas.renderAll(); updateAllLayerPanels();});
+                    item.querySelector('.toggle-lock-btn').addEventListener('click', (e) => { e.stopPropagation(); const currentlyLocked = !obj.selectable; obj.set({ selectable: currentlyLocked, evented: currentlyLocked }); canvas.discardActiveObject().renderAll(); updateAllLayerPanels();});
+                    
+                    item.querySelector('.delete-layer-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showConfirmModal('레이어 삭제', `'${obj.name}' 레이어를 삭제하시겠습니까?`, () => {
+                            canvas.remove(obj);
+                        });
                     });
                     
-                    if (target.classList.contains('rotate-handle') && selectedItems.size === 1) {
-                        currentAction = 'rotate';
-                        const centerX = rect.left + rect.width / 2;
-                        const centerY = rect.top + rect.height / 2;
-                        const initialX = e.clientX - centerX;
-                        const initialY = e.clientY - centerY;
-                        const startAngle = Math.atan2(initialY, initialX);
-                        const currentTransform = new DOMMatrix(getComputedStyle(wrapper).transform);
-                        const currentRotation = Math.atan2(currentTransform.b, currentTransform.a);
-                        wrapper.dataset.startAngle = startAngle;
-                        wrapper.dataset.currentRotation = currentRotation;
-                    } else if (target.classList.contains('resize-handle') && selectedItems.size === 1) {
-                        currentAction = 'resize';
+                    item.addEventListener('dragstart', () => { draggedLayerItem = item; setTimeout(() => item.classList.add('dragging'), 0); });
+                    item.addEventListener('dragend', () => { if(draggedLayerItem) draggedLayerItem.classList.remove('dragging'); draggedLayerItem = null; });
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        if (item !== draggedLayerItem) {
+                             const rect = item.getBoundingClientRect();
+                             const next = (e.clientY - rect.top) / rect.height > .5;
+                             container.insertBefore(draggedLayerItem, next && item.nextSibling || item);
+                        }
+                    });
+                });
+                
+                container.addEventListener('drop', () => {
+                    const newOrderUuids = Array.from(container.querySelectorAll('.layer-item')).map(it => it.dataset.uuid);
+                    const totalObjects = canvas.getObjects().length;
+                    
+                    newOrderUuids.forEach((uuid, index) => {
+                        const objToMove = canvas.getObjects().find(o => o.uuid == uuid);
+                        if (objToMove) canvas.moveTo(objToMove, totalObjects - 1 - index);
+                    });
+                    canvas.renderAll();
+                });
+            };
+            
+            const updateAllLayerPanels = () => {
+                updateLayerList(layerListDesktopContainer);
+                if (!layerModal.classList.contains('hidden')) {
+                     updateLayerList(layerListMobileContainer);
+                }
+            };
+
+            // --- 탭 전환 로직 ---
+            Object.keys(tabs).forEach(key => {
+                tabs[key].addEventListener('click', () => {
+                    Object.values(tabs).forEach(t => t.classList.remove('tab-active'));
+                    tabs[key].classList.add('tab-active');
+                    renderParts(key);
+                });
+            });
+
+            // 초기 렌더링
+            renderParts('shapes');
+            updateAllLayerPanels();
+
+            // --- 파츠 추가 로직 ---
+            const addPartToCanvas = (partData, namePrefix) => {
+                let obj;
+                const commonOptions = { left: canvas.width / 2, top: canvas.height / 2, originX: 'center', originY: 'center', ...partData.options, };
+
+                switch (partData.type) {
+                    case 'rect': obj = new fabric.Rect(commonOptions); break;
+                    case 'circle': obj = new fabric.Circle(commonOptions); break;
+                    case 'triangle': obj = new fabric.Triangle(commonOptions); break;
+                    case 'path': obj = new fabric.Path(partData.path, commonOptions); break;
+                    case 'group':
+                        const items = partData.items.map(itemData => {
+                            if (itemData.type === 'rect') return new fabric.Rect(itemData.options);
+                            if (itemData.type === 'circle') return new fabric.Circle(itemData.options);
+                            if (itemData.type === 'path') return new fabric.Path(itemData.options.path, itemData.options);
+                            return null;
+                        }).filter(Boolean);
+                        obj = new fabric.Group(items, commonOptions);
+                        break;
+                    case 'svg':
+                        fabric.loadSVGFromString(partData.svgString, (objects, options) => {
+                            objects.forEach(o => { if (o.fill && typeof o.fill === 'string') { o.set('fill', '#cccccc'); } });
+                            const svgObj = fabric.util.groupSVGElements(objects, options);
+                            svgObj.set({ left: canvas.width / 2, top: canvas.height / 2, originX: 'center', originY: 'center'}).scaleToWidth(100);
+                            addCustomProperties(svgObj, 'SVG');
+                            canvas.add(svgObj).setActiveObject(svgObj).renderAll();
+                        });
+                        return;
+                }
+                
+                if (obj) { addCustomProperties(obj, namePrefix); canvas.add(obj).setActiveObject(obj).renderAll(); }
+            };
+
+            // --- 색상 변경 로직 ---
+            canvas.on('mouse:dblclick', (opt) => {
+                opt.e.preventDefault();
+                opt.e.stopPropagation();
+                if (opt.target && opt.target.type !== 'activeSelection' && (opt.target.fill || opt.target.stroke || opt.target._objects)) {
+                    currentTargetForColor = opt.target;
+                    
+                    const x = opt.e.clientX;
+                    const y = opt.e.clientY;
+
+                    colorPaletteContextMenu.style.left = `${x}px`;
+                    colorPaletteContextMenu.style.top = `${y}px`;
+                    colorPaletteContextMenu.classList.remove('hidden');
+
+                    const menuRect = colorPaletteContextMenu.getBoundingClientRect();
+                    if (menuRect.right > window.innerWidth) colorPaletteContextMenu.style.left = `${window.innerWidth - menuRect.width - 10}px`;
+                    if (menuRect.bottom > window.innerHeight) colorPaletteContextMenu.style.top = `${window.innerHeight - menuRect.height - 10}px`;
+                }
+            });
+
+            colorGrid.innerHTML = colors.map(color => `<div class="w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow" style="background-color: ${color};" data-color="${color}"></div>`).join('');
+            colorGrid.addEventListener('click', (e) => {
+                if (e.target.dataset.color && currentTargetForColor) {
+                    const color = e.target.dataset.color;
+                    const applyColor = (obj) => {
+                        if (obj.stroke && (obj.fill === '' || obj.fill === null)) { obj.set('stroke', color); }
+                        else if (obj.fill) { obj.set('fill', color); }
+                    };
+                    
+                    if (currentTargetForColor.isType('group')) {
+                        currentTargetForColor.forEachObject(obj => applyColor(obj));
                     } else {
-                        currentAction = 'drag';
-                        trashCan.classList.add('active');
+                        applyColor(currentTargetForColor);
+                    }
+                    canvas.renderAll();
+                    colorPaletteContextMenu.classList.add('hidden');
+                }
+            });
+            
+            window.addEventListener('mousedown', (e) => {
+                if (!colorPaletteContextMenu.classList.contains('hidden') && !colorPaletteContextMenu.contains(e.target)) {
+                    colorPaletteContextMenu.classList.add('hidden');
+                }
+            });
+
+            // --- 그룹 버튼 상태 관리 ---
+            const updateGroupButtonsState = () => {
+                const activeObject = canvas.getActiveObject();
+                if (!activeObject) {
+                    toolBtns.group.classList.add('hidden');
+                    toolBtns.ungroup.classList.add('hidden');
+                    return;
+                }
+                
+                const isMultiSelection = activeObject.type === 'activeSelection';
+                const isGroup = activeObject.isType('group') && !activeObject.isType('activeSelection');
+
+                toolBtns.group.classList.toggle('hidden', !isMultiSelection);
+                toolBtns.ungroup.classList.toggle('hidden', !isGroup);
+            };
+
+            // --- 확인 모달 로직 ---
+            const showConfirmModal = (title, message, callback) => {
+                confirmTitle.textContent = title;
+                confirmMessage.textContent = message;
+                confirmCallback = callback;
+                confirmModal.classList.remove('hidden');
+            };
+
+            confirmOkBtn.addEventListener('click', () => {
+                if (confirmCallback) confirmCallback();
+                confirmModal.classList.add('hidden');
+                confirmCallback = null;
+            });
+
+            confirmCancelBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+                confirmCallback = null;
+            });
+            
+            // --- 그리기 로직 ---
+            const stopDrawing = () => {
+                canvas.isDrawingMode = false;
+                toolBtns.drawCurve.classList.remove('bg-blue-200');
+                toolBtns.drawLine.classList.remove('bg-blue-200');
+                toolBtns.stopDrawing.classList.add('hidden');
+                canvas.off('path:created');
+            };
+
+            toolBtns.stopDrawing.addEventListener('click', stopDrawing);
+
+            toolBtns.drawLine.addEventListener('click', () => {
+                stopDrawing();
+                canvas.isDrawingMode = true;
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                canvas.freeDrawingBrush.width = 8;
+                canvas.freeDrawingBrush.color = '#555555';
+                canvas.freeDrawingBrush.decimate = 8;
+                toolBtns.drawLine.classList.add('bg-blue-200');
+                toolBtns.stopDrawing.classList.remove('hidden');
+
+                canvas.once('path:created', (opt) => {
+                    const drawnLine = opt.path;
+                    addCustomProperties(drawnLine, '선');
+                    canvas.setActiveObject(drawnLine);
+                    canvas.renderAll();
+                    stopDrawing();
+                });
+            });
+
+            toolBtns.drawCurve.addEventListener('click', () => {
+                stopDrawing();
+                canvas.isDrawingMode = true;
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                canvas.freeDrawingBrush.width = 2;
+                canvas.freeDrawingBrush.color = '#888888';
+                toolBtns.drawCurve.classList.add('bg-blue-200');
+                toolBtns.stopDrawing.classList.remove('hidden');
+
+                canvas.once('path:created', (opt) => {
+                    const drawnPath = opt.path;
+                    let pathString = drawnPath.path.map(p => p.join(' ')).join(' ') + ' Z';
+
+                    const closedShape = new fabric.Path(pathString, {
+                        fill: '#cccccc',
+                        stroke: null,
+                        originX: 'center', originY: 'center',
+                        left: drawnPath.left + drawnPath.width / 2,
+                        top: drawnPath.top + drawnPath.height / 2,
+                    });
+
+                    canvas.remove(drawnPath);
+                    addCustomProperties(closedShape, '도형');
+                    canvas.add(closedShape);
+                    canvas.setActiveObject(closedShape);
+                    canvas.renderAll();
+                    stopDrawing();
+                });
+            });
+            
+            // --- 관리자 & 삭제 키 로직 ---
+            window.addEventListener('keydown', (e) => {
+                // Del 키로 오브젝트 삭제
+                if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.tagName !== 'INPUT') {
+                     const activeObjects = canvas.getActiveObjects();
+                    if (activeObjects.length > 0) {
+                        showConfirmModal('삭제 확인', `${activeObjects.length}개의 항목을 삭제하시겠습니까?`, () => {
+                            activeObjects.forEach(obj => canvas.remove(obj));
+                            canvas.discardActiveObject().renderAll();
+                        });
                     }
                 }
+                
+                // 관리자 모드 토글
+                if (e.ctrlKey && e.altKey && (e.key === 'a' || e.key === 'A')) {
+                    e.preventDefault();
+                    isAdminMode = !isAdminMode;
+                    adminUploadBtn.classList.toggle('hidden', !isAdminMode);
+                    adminUploadBtn.classList.toggle('flex', isAdminMode);
+                    adminModeText.classList.toggle('hidden', !isAdminMode);
+                    
+                    const activeTab = document.querySelector('.tab-active');
+                    if (activeTab) {
+                        const category = activeTab.id.split('-')[1];
+                        renderParts(category);
+                    }
+                }
+            });
 
-                wrapper.addEventListener('pointerdown', onPointerDown);
-            }
+            adminUploadBtn.addEventListener('click', () => adminSvgUploadInput.click());
+            adminSvgUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file || !isAdminMode) return;
 
-            initialize();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const svgString = event.target.result;
+                    const newPart = {
+                        type: 'svg',
+                        svgString: svgString,
+                        options: { fill: '#cccccc' }
+                    };
+                    partsData.shapes.push(newPart);
+                    if (tabs.shapes.classList.contains('tab-active')) {
+                        renderParts('shapes');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            });
+
+
+            // --- 캔버스 이벤트 리스너 ---
+            canvas.on({
+                'object:added': updateAllLayerPanels, 
+                'object:removed': updateAllLayerPanels, 
+                'selection:created': () => {
+                    updateAllLayerPanels();
+                    updateGroupButtonsState();
+                    saveSelectedBtn.disabled = false;
+                }, 
+                'selection:updated': () => {
+                    updateAllLayerPanels();
+                    updateGroupButtonsState();
+                    saveSelectedBtn.disabled = false;
+                }, 
+                'selection:cleared': () => {
+                    updateAllLayerPanels();
+                    updateGroupButtonsState();
+                    saveSelectedBtn.disabled = true;
+                },
+            });
+
+            // --- 그룹/그룹해제 버튼 리스너 ---
+            toolBtns.group.addEventListener('click', () => {
+                const activeSelection = canvas.getActiveObject();
+                if (!activeSelection || activeSelection.type !== 'activeSelection') return;
+                
+                const group = activeSelection.toGroup();
+                addCustomProperties(group, '그룹');
+                canvas.setActiveObject(group);
+                canvas.renderAll();
+            });
+
+            toolBtns.ungroup.addEventListener('click', () => {
+                const activeGroup = canvas.getActiveObject();
+                if (!activeGroup || !activeGroup.isType('group')) return;
+                
+                const items = activeGroup.getObjects();
+                activeGroup._restoreObjectsState();
+                canvas.remove(activeGroup);
+                for (let i = 0; i < items.length; i++) {
+                    canvas.add(items[i]);
+                }
+                canvas.discardActiveObject();
+                const sel = new fabric.ActiveSelection(items, { canvas: canvas });
+                canvas.setActiveObject(sel);
+                canvas.renderAll();
+            });
+
+            // --- 모바일 레이어 모달 로직 ---
+            toolBtns.layerMobile.addEventListener('click', () => {
+                 updateLayerList(layerListMobileContainer);
+                layerModal.classList.remove('hidden');
+                setTimeout(() => layerSheet.classList.remove('translate-y-full'), 10);
+            });
+            const closeLayerModal = () => {
+                layerSheet.classList.add('translate-y-full');
+                setTimeout(() => layerModal.classList.add('hidden'), 300);
+            };
+            closeLayerModalBtn.addEventListener('click', closeLayerModal);
+            layerModal.addEventListener('click', (e) => { if (e.target === layerModal) closeLayerModal(); });
+            
+            // --- 나머지 모든 기능들 (저장, 파일 업로드 등) ---
+            uploadBtn.addEventListener('click', () => svgUploadInput.click());
+            svgUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const svgString = event.target.result;
+                    fabric.loadSVGFromString(svgString, (objects, options) => {
+                        objects.forEach(obj => {
+                            if (obj.isType('path')) { obj.set('fill', '#cccccc'); }
+                        });
+
+                        const obj = fabric.util.groupSVGElements(objects, options);
+                        obj.set({ left: canvas.width / 2, top: canvas.height / 2, originX: 'center', originY: 'center'}).scaleToWidth(100);
+                        
+                        addCustomProperties(obj, 'SVG');
+                        canvas.add(obj).setActiveObject(obj).renderAll();
+                    });
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            });
+
+            // 선택 저장
+            saveSelectedBtn.addEventListener('click', () => {
+                const selection = canvas.getActiveObject();
+                if (!selection) return;
+
+                const bounds = selection.getBoundingRect();
+                const dataUrl = canvas.toDataURL({
+                    left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height, format: 'png',
+                });
+                
+                previewImage.src = dataUrl;
+                centerPoint.style.left = '50%';
+                centerPoint.style.top = '50%';
+                savePreviewModal.classList.remove('hidden');
+            });
+            
+            closePreviewBtn.addEventListener('click', () => savePreviewModal.classList.add('hidden'));
+            savePreviewModal.addEventListener('click', (e) => {
+                if(e.target === savePreviewModal) savePreviewModal.classList.add('hidden');
+            });
+
+            let isDraggingCenter = false;
+            centerPoint.addEventListener('mousedown', () => isDraggingCenter = true);
+            window.addEventListener('mouseup', () => isDraggingCenter = false);
+            window.addEventListener('mousemove', (e) => {
+                if (isDraggingCenter) {
+                    const rect = previewContainer.getBoundingClientRect();
+                    let x = e.clientX - rect.left;
+                    let y = e.clientY - rect.top;
+                    x = Math.max(0, Math.min(x, rect.width));
+                    y = Math.max(0, Math.min(y, rect.height));
+                    centerPoint.style.left = `${(x / rect.width) * 100}%`;
+                    centerPoint.style.top = `${(y / rect.height) * 100}%`;
+                }
+            });
+            
+            savePngBtn.addEventListener('click', () => {
+                const selection = canvas.getActiveObject();
+                if (!selection) return;
+
+                const bounds = selection.getBoundingRect();
+                const centerPercX = parseFloat(centerPoint.style.left) / 100;
+                const centerPercY = parseFloat(centerPoint.style.top) / 100;
+                
+                const userCenterX = bounds.width * centerPercX;
+                const userCenterY = bounds.height * centerPercY;
+
+                const finalWidth = 2 * Math.max(userCenterX, bounds.width - userCenterX);
+                const finalHeight = 2 * Math.max(userCenterY, bounds.height - userCenterY);
+
+                const dataUrl = canvas.toDataURL({
+                    left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height, format: 'png',
+                });
+                
+                const img = new Image();
+                img.onload = () => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = finalWidth;
+                    tempCanvas.height = finalHeight;
+                    const ctx = tempCanvas.getContext('2d');
+                    
+                    const drawX = finalWidth / 2 - userCenterX;
+                    const drawY = finalHeight / 2 - userCenterY;
+
+                    ctx.drawImage(img, drawX, drawY);
+                    
+                    const finalDataUrl = tempCanvas.toDataURL({ format: 'png' });
+                    const filename = (filenameInput.value || 'my-character') + '.png';
+                    
+                    const triggerDownload = (url, name) => {
+                        const a = document.createElement('a');
+                        a.href = url; a.download = name;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    };
+
+                    triggerDownload(finalDataUrl, filename);
+                    savePreviewModal.classList.add('hidden');
+                };
+                img.src = dataUrl;
+            });
+
+            saveSvgBtn.addEventListener('click', () => {
+                const selection = canvas.getActiveObject();
+                if (!selection) return;
+
+                const bounds = selection.getBoundingRect();
+                const centerPercX = parseFloat(centerPoint.style.left) / 100;
+                const centerPercY = parseFloat(centerPoint.style.top) / 100;
+                
+                const userCenterX = bounds.width * centerPercX;
+                const userCenterY = bounds.height * centerPercY;
+
+                const finalWidth = 2 * Math.max(userCenterX, bounds.width - userCenterX);
+                const finalHeight = 2 * Math.max(userCenterY, bounds.height - userCenterY);
+
+                const drawX = finalWidth / 2 - userCenterX;
+                const drawY = finalHeight / 2 - userCenterY;
+
+                selection.clone((cloned) => {
+                    const tempCanvas = new fabric.StaticCanvas(null, {
+                        width: finalWidth,
+                        height: finalHeight,
+                    });
+
+                    cloned.set({ left: drawX, top: drawY });
+                    tempCanvas.add(cloned);
+                    const finalSVG = tempCanvas.toSVG();
+                    
+                    const blob = new Blob([finalSVG], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const filename = (filenameInput.value || 'my-character') + '.svg';
+                    
+                    const triggerDownload = (url, name) => {
+                        const a = document.createElement('a');
+                        a.href = url; a.download = name;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    };
+
+                    triggerDownload(url, filename);
+                    
+                    URL.revokeObjectURL(url);
+                    savePreviewModal.classList.add('hidden');
+                });
+            });
         });
     </script>
 </body>
 </html>
+
 
