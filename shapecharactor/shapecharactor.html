@@ -125,9 +125,8 @@
 <body class="w-screen h-screen overflow-hidden flex flex-col">
 
     <!-- ① 헤더 -->
-    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200 p-3 flex items-center justify-center z-10 shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-violet-500"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
-        <h1 class="text-xl font-bold ml-2 text-gray-800">나만의 도형 캐릭터 만들기</h1>
+    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200 p-3 flex items-center justify-start z-10 shrink-0 px-6">
+        <h1 class="text-xl font-bold text-gray-800">나만의 도형 캐릭터 만들기</h1>
     </header>
 
     <!-- 메인 영역 -->
@@ -171,7 +170,7 @@
         </aside>
 
         <!-- ③ 스케치북 & ④ 도구 모음 영역 -->
-        <div class="flex-1 flex flex-col gap-2 overflow-hidden order-1 lg:order-2">
+        <div class="flex-1 flex flex-col gap-2 overflow-hidden order-1 lg:order-2 min-h-0">
             <div class="relative w-full flex-1 min-h-0">
                 <div id="sketchbook-wrapper" class="w-full h-full bg-white rounded-2xl shadow-inner">
                     <canvas id="sketchbook"></canvas>
@@ -307,6 +306,7 @@
                 lines: document.getElementById('tab-lines-mobile'),
                 layers: document.getElementById('tab-layers-mobile'),
             };
+            
             const adminUploadBtn = document.getElementById('admin-upload-btn');
             const adminSvgUploadInput = document.getElementById('admin-svg-upload-input');
             const adminModeText = document.getElementById('admin-mode-text');
@@ -890,20 +890,39 @@
                 canvas.renderAll();
             });
 
-            // --- 모바일 레이어 모달 로직 ---
-            toolBtns.panelMobile.addEventListener('click', () => {
-                 updateLayerList(mobilePanelContent);
+            // --- 모바일 패널 로직 ---
+            const switchMobileTab = (tabName) => {
+                 Object.values(mobileTabs).forEach(t => t.classList.remove('tab-active'));
+                 mobileTabs[tabName].classList.add('tab-active');
+
+                 mobilePanelContent.innerHTML = '';
+                 if (tabName === 'shapes' || tabName === 'lines') {
+                    renderParts(tabName, mobilePanelContent);
+                 } else if (tabName === 'layers') {
+                    updateLayerList(mobilePanelContent);
+                 }
+            };
+
+            const openMobilePanel = (defaultTab = 'shapes') => {
                 mobilePanelModal.classList.remove('hidden');
                 setTimeout(() => mobilePanelSheet.classList.remove('translate-y-full'), 10);
-                switchMobileTab('shapes');
-            });
+                switchMobileTab(defaultTab);
+            };
+
+            toolBtns.panelMobile.addEventListener('click', () => openMobilePanel());
+
             const closeMobilePanel = () => {
                 mobilePanelSheet.classList.add('translate-y-full');
                 setTimeout(() => mobilePanelModal.classList.add('hidden'), 300);
             };
+
             closePanelModalBtn.addEventListener('click', closeMobilePanel);
             mobilePanelModal.addEventListener('click', (e) => { if (e.target === mobilePanelModal) closeMobilePanel(); });
             
+            Object.keys(mobileTabs).forEach(key => {
+                mobileTabs[key].addEventListener('click', () => switchMobileTab(key));
+            });
+
             // --- 나머지 모든 기능들 (저장, 파일 업로드 등) ---
             uploadBtn.addEventListener('click', () => svgUploadInput.click());
             svgUploadInput.addEventListener('change', (e) => {
