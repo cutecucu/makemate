@@ -16,34 +16,29 @@
         /* 기본 폰트 및 배경 설정 */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #f3f4f6; /* bg-gray-100 */
         }
         /* 활성화된 탭 스타일 */
         .tab-active {
-            border-color: #3b82f6;
-            background-color: #dbeafe;
-            color: #1e40af;
+            border-color: #8b5cf6; /* violet-500 */
+            background-color: #ede9fe; /* violet-100 */
+            color: #5b21b6; /* violet-800 */
             font-weight: 600;
         }
         /* 파츠 아이템 호버 스타일 */
         .part-item:hover {
-            transform: scale(1.1);
+            transform: scale(1.08) rotate(3deg);
             background-color: #e0e7ff;
-        }
-        /* 스케치북 다중 선택 모드 활성화 시 테두리 스타일 */
-        .multi-select-mode {
-            box-shadow: 0 0 0 4px #f59e0b;
         }
         /* Fabric.js 컨트롤 커스텀 스타일 */
         .canvas-container {
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            border-radius: 1rem; /* rounded-2xl */
         }
         /* 스크롤바 스타일링 */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px;}
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px;}
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        ::-webkit-scrollbar-thumb { background: #a78bfa; border-radius: 10px;} /* violet-400 */
+        ::-webkit-scrollbar-thumb:hover { background: #7c3aed; } /* violet-600 */
         /* 관리자용 파츠 삭제 버튼 스타일 */
         .admin-delete-btn {
             position: absolute;
@@ -61,25 +56,28 @@
             opacity: 0.8;
             transition: opacity 0.2s, transform 0.2s;
             border: 2px solid white;
+            transform: scale(0.9);
         }
         .admin-delete-btn:hover {
             opacity: 1;
-            transform: scale(1.1);
+            transform: scale(1);
         }
         /* 레이어 아이템 스타일 */
         .layer-item {
             display: flex;
             align-items: center;
             padding: 8px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-bottom: 4px;
             background-color: #f9fafb;
             border: 1px solid #e5e7eb;
             user-select: none;
+            transition: all 0.2s ease-in-out;
         }
         .layer-item.selected {
-            background-color: #dbeafe;
-            border-color: #3b82f6;
+            background-color: #ede9fe;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px #c4b5fd;
         }
         .layer-item.dragging {
             opacity: 0.5;
@@ -95,27 +93,40 @@
         }
         .layer-item-controls button {
             margin-left: 4px;
-            color: #6b7280;
+            color: #9ca3af;
+            transition: color 0.2s;
         }
         .layer-item-controls button:hover {
-            color: #111827;
+            color: #374151;
         }
         .layer-item-controls .toggled-on svg {
-            color: #3b82f6;
+            color: #8b5cf6;
         }
         .layer-item-controls .locked svg {
-            color: #ef4444;
+            color: #f43f5e;
         }
         .layer-item-drag-handle {
             cursor: grab;
+            color: #d1d5db;
+        }
+        .tool-btn {
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .tool-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .tool-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
         }
     </style>
 </head>
 <body class="w-screen h-screen overflow-hidden flex flex-col">
 
     <!-- ① 헤더 -->
-    <header class="bg-white shadow-md p-3 flex items-center justify-center z-10">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200 p-3 flex items-center justify-center z-10 shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-violet-500"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
         <h1 class="text-xl font-bold ml-2 text-gray-800">나만의 도형 캐릭터 만들기</h1>
     </header>
 
@@ -125,7 +136,7 @@
         <!-- ② 파츠/레이어 패널 (데스크톱) -->
         <aside class="w-full lg:w-72 h-full flex-col shrink-0 order-2 lg:order-1 hidden lg:flex gap-4">
             <!-- 파츠 & 업로드 섹션 -->
-            <div class="bg-white rounded-xl shadow-lg flex flex-col flex-[2] min-h-0">
+            <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg shadow-gray-500/5 flex flex-col flex-[2] min-h-0">
                 <div class="p-3 border-b border-gray-200"><h2 class="font-semibold text-gray-700">파츠 선택</h2></div>
                 <div class="flex border-b border-gray-200">
                     <button id="tab-shapes" class="flex-1 p-3 text-sm text-gray-600 border-b-2 tab-active">도형</button>
@@ -137,12 +148,12 @@
                 <!-- 파일 업로드 섹션 -->
                 <div class="p-3 border-t border-gray-200 flex flex-col gap-2">
                     <input type="file" id="svg-upload-input" class="hidden" accept=".svg">
-                    <button id="upload-btn" class="w-full bg-indigo-500 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-600 transition-all text-sm font-semibold flex items-center justify-center gap-2">
+                    <button id="upload-btn" class="w-full bg-violet-500 text-white px-4 py-2 rounded-lg shadow-md shadow-violet-500/20 hover:bg-violet-600 transition-all text-sm font-semibold flex items-center justify-center gap-2 transform hover:-translate-y-px">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         SVG 캔버스에 추가
                     </button>
                     <input type="file" id="admin-svg-upload-input" class="hidden" accept=".svg">
-                    <button id="admin-upload-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-all text-sm font-semibold items-center justify-center gap-2 hidden">
+                    <button id="admin-upload-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg shadow-md shadow-green-500/20 hover:bg-green-700 transition-all text-sm font-semibold items-center justify-center gap-2 hidden transform hover:-translate-y-px">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                         SVG 파츠로 추가
                     </button>
@@ -151,7 +162,7 @@
             </div>
             
             <!-- 레이어 섹션 -->
-            <div class="bg-white rounded-xl shadow-lg flex-1 flex flex-col min-h-0 flex-[1]">
+            <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg shadow-gray-500/5 flex-1 flex flex-col min-h-0 flex-[1]">
                 <div class="p-3 border-b border-gray-200"><h2 class="font-semibold text-gray-700">레이어</h2></div>
                 <div id="layer-list-desktop" class="flex-1 p-2 overflow-y-auto">
                     <!-- 데스크톱 레이어 목록이 이곳에 표시됩니다. -->
@@ -161,45 +172,45 @@
 
         <!-- ③ 스케치북 & ④ 도구 모음 영역 -->
         <div class="flex-1 flex flex-col gap-2 overflow-hidden order-1 lg:order-2">
-            <div class="relative w-full flex-1">
-                <div id="sketchbook-wrapper" class="w-full h-full bg-white rounded-xl">
+            <div class="relative w-full flex-1 min-h-0">
+                <div id="sketchbook-wrapper" class="w-full h-full bg-white rounded-2xl shadow-inner">
                     <canvas id="sketchbook"></canvas>
                     <div class="absolute top-3 right-3 flex gap-2 z-10">
-                        <button id="save-all-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-all text-sm font-semibold flex items-center gap-2">
+                        <button id="save-all-btn" class="bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg shadow-gray-800/20 hover:bg-black transition-all text-sm font-semibold flex items-center gap-2 transform hover:-translate-y-px">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             전체 저장
                         </button>
-                        <button id="save-selected-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow transition-all text-sm font-semibold flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled>
+                        <button id="save-selected-btn" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-violet-500/20 transition-all text-sm font-semibold flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none transform disabled:transform-none hover:-translate-y-px" disabled>
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                             선택 저장
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="flex justify-center">
-                <div class="bg-white/80 backdrop-blur-sm p-2 rounded-xl shadow-lg flex items-center gap-2">
-                    <button id="draw-curve-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2" title="자유 곡선 그리기">
+            <div class="flex justify-center shrink-0">
+                <div class="bg-white/60 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-gray-500/10 flex items-center gap-1">
+                    <button id="draw-curve-btn" class="tool-btn p-3 rounded-xl hover:bg-violet-100 transition-colors flex items-center gap-2" title="자유 곡선 그리기">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><path d="M20.42 10.18c.62-.28 1.12-.89 1.2-1.62.1-1.04-.62-2.1-1.68-2.32-1.04-.22-2.1.62-2.32 1.68-.08.38.02.78.22 1.12"/><path d="M14.93 17.58c1.56-.63 2.68-2.32 2.68-4.12 0-2.4-1.92-4.38-4.38-4.38-1.8 0-3.4.94-4.12 2.68"/><path d="M3.58 11.58c-.63 1.56-2.32 2.68-4.12 2.68C-2.4 14.26-4.38 12.34-4.38 9.9c0-1.8.94-3.4 2.68-4.12"/><path d="M10.18 3.58c.34.1.68.22 1.02.42"/><path d="M2.1 16.2c.4.18.82.32 1.28.42"/><path d="M21.9 7.8c-.18.4-.32.82-.42 1.28"/><path d="M17.58 14.93c-.63 1.56-2.32 2.68-4.12 2.68-2.4 0-4.38-1.92-4.38-4.38 0-1.8.94-3.4 2.68-4.12"/></svg>
                         <span class="font-semibold text-sm text-gray-700 hidden sm:inline">도형 그리기</span>
                     </button>
-                    <button id="draw-line-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2" title="선 그리기">
+                    <button id="draw-line-btn" class="tool-btn p-3 rounded-xl hover:bg-violet-100 transition-colors flex items-center gap-2" title="선 그리기">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3 16.828V21h4.172l14.002-14.002z"/><path d="m15 5 6 6"/></svg>
                         <span class="font-semibold text-sm text-gray-700 hidden sm:inline">선 그리기</span>
                     </button>
-                    <div class="border-l border-gray-200 h-6"></div>
-                    <button id="group-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 hidden" title="그룹 만들기">
+                    <div class="border-l border-gray-200 h-6 mx-1"></div>
+                    <button id="group-btn" class="tool-btn p-3 rounded-xl hover:bg-violet-100 transition-colors flex items-center gap-2 hidden" title="그룹 만들기">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                         <span class="font-semibold text-sm text-gray-700 hidden sm:inline">그룹</span>
                     </button>
-                    <button id="ungroup-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 hidden" title="그룹 해제">
+                    <button id="ungroup-btn" class="tool-btn p-3 rounded-xl hover:bg-violet-100 transition-colors flex items-center gap-2 hidden" title="그룹 해제">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><path d="M21 12H3"/><path d="M12 21V3"/></svg>
                         <span class="font-semibold text-sm text-gray-700 hidden sm:inline">그룹 해제</span>
                     </button>
-                     <button id="layer-btn-mobile" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 lg:hidden" title="레이어 보기">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">레이어</span>
+                     <button id="panel-btn-mobile" class="tool-btn p-3 rounded-xl hover:bg-violet-100 transition-colors flex items-center gap-2 lg:hidden" title="파츠/레이어 보기">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        <span class="font-semibold text-sm text-gray-700 hidden sm:inline">파츠/레이어</span>
                     </button>
-                    <button id="stop-drawing-btn" class="tool-btn p-3 rounded-lg hover:bg-blue-100 transition-colors hidden" title="그리기 중단">
+                    <button id="stop-drawing-btn" class="tool-btn p-3 rounded-lg hover:bg-violet-100 transition-colors hidden" title="그리기 중단">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
                     </button>
                 </div>
@@ -248,15 +259,23 @@
             </div>
         </div>
     </div>
-    <div id="layer-modal" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40 lg:hidden">
-        <div id="layer-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col transition-transform translate-y-full" style="height: 60vh;">
-            <div class="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-gray-800">레이어</h3>
-                <button id="close-layer-modal-btn" class="text-gray-500 hover:text-gray-800">
+    
+    <!-- 모바일용 패널 모달 -->
+    <div id="mobile-panel-modal" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40 lg:hidden">
+        <div id="mobile-panel-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col transition-transform translate-y-full" style="height: 70vh;">
+            <div class="p-2 border-b border-gray-200 flex justify-between items-center shrink-0">
+                 <div class="flex border-b border-gray-200 w-full">
+                    <button id="tab-shapes-mobile" class="flex-1 p-3 text-sm text-gray-600 border-b-2 tab-active">도형</button>
+                    <button id="tab-lines-mobile" class="flex-1 p-3 text-sm text-gray-600 border-b-2 border-transparent">선</button>
+                    <button id="tab-layers-mobile" class="flex-1 p-3 text-sm text-gray-600 border-b-2 border-transparent">레이어</button>
+                </div>
+                <button id="close-panel-modal-btn" class="text-gray-500 hover:text-gray-800 ml-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
-            <div id="layer-list-mobile" class="flex-1 overflow-y-auto p-2"></div>
+            <div id="mobile-panel-content" class="flex-1 overflow-y-auto p-2">
+                 <!-- Mobile panel content will be populated here -->
+            </div>
         </div>
     </div>
 
@@ -274,15 +293,20 @@
                 drawCurve: document.getElementById('draw-curve-btn'),
                 drawLine: document.getElementById('draw-line-btn'),
                 stopDrawing: document.getElementById('stop-drawing-btn'),
-                layerMobile: document.getElementById('layer-btn-mobile'),
+                panelMobile: document.getElementById('panel-btn-mobile'),
                 group: document.getElementById('group-btn'),
                 ungroup: document.getElementById('ungroup-btn'),
             };
             const layerListDesktopContainer = document.getElementById('layer-list-desktop');
-            const layerModal = document.getElementById('layer-modal');
-            const layerSheet = document.getElementById('layer-sheet');
-            const closeLayerModalBtn = document.getElementById('close-layer-modal-btn');
-            const layerListMobileContainer = document.getElementById('layer-list-mobile');
+            const mobilePanelModal = document.getElementById('mobile-panel-modal');
+            const mobilePanelSheet = document.getElementById('mobile-panel-sheet');
+            const closePanelModalBtn = document.getElementById('close-panel-modal-btn');
+            const mobilePanelContent = document.getElementById('mobile-panel-content');
+            const mobileTabs = {
+                shapes: document.getElementById('tab-shapes-mobile'),
+                lines: document.getElementById('tab-lines-mobile'),
+                layers: document.getElementById('tab-layers-mobile'),
+            };
             const adminUploadBtn = document.getElementById('admin-upload-btn');
             const adminSvgUploadInput = document.getElementById('admin-svg-upload-input');
             const adminModeText = document.getElementById('admin-mode-text');
@@ -304,8 +328,7 @@
             const filenameInput = document.getElementById('filename-input');
             const savePngBtn = document.getElementById('save-png-btn');
             const saveSvgBtn = document.getElementById('save-svg-btn');
-
-
+            
             // --- 상태 변수 ---
             let objectCounter = 1;
             let isAdminMode = false;
@@ -330,7 +353,6 @@
                     { type: 'path', path: 'M 50 0 A 50 50 0 1 0 50 100 A 40 40 0 1 1 50 0 Z', options: { fill: '#2dd4bf' } },
                     { type: 'path', path: 'M 0 0 H 100 V 100 H 0 Z M 20 20 H 80 V 80 H 20 Z', options: { fill: '#38bdf8', fillRule: 'evenodd' } },
                     { type: 'path', path: 'M 50,0 L 79.39,20.61 L 90.45,50 L 79.39,79.39 L 50,90.45 L 20.61,79.39 L 9.55,50 L 20.61,20.61 Z', options: { fill: '#818cf8' } },
-
                 ],
                 lines: [
                     { type: 'path', path: 'M 0 0 Q 50 50 100 0', options: { stroke: '#555555', strokeWidth: 8, fill: '' } },
@@ -368,9 +390,9 @@
             resizeCanvas();
 
             fabric.Object.prototype.transparentCorners = false;
-            fabric.Object.prototype.cornerColor = '#3b82f6';
+            fabric.Object.prototype.cornerColor = '#8b5cf6';
             fabric.Object.prototype.cornerStyle = 'circle';
-            fabric.Object.prototype.borderColor = '#3b82f6';
+            fabric.Object.prototype.borderColor = '#8b5cf6';
             fabric.Object.prototype.borderDashArray = [5, 5];
             fabric.Object.prototype.cornerSize = 12;
             fabric.Object.prototype.rotatingPointOffset = 30;
@@ -383,13 +405,13 @@
             };
 
             // --- 파츠 패널 렌더링 ---
-            const renderParts = (category) => {
-                partsContainer.innerHTML = '';
-                const grid = document.createElement('div');
+            const renderParts = (category, container) => {
+                container.innerHTML = '';
+                 const grid = document.createElement('div');
                 grid.className = 'grid grid-cols-3 gap-3';
                 partsData[category].forEach((part, index) => {
                     const svgContainer = document.createElement('div');
-                    svgContainer.className = 'part-item relative aspect-square bg-gray-100 rounded-lg flex items-center justify-center cursor-pointer transition-transform p-2';
+                    svgContainer.className = 'part-item relative aspect-square bg-gray-100 rounded-lg flex items-center justify-center cursor-pointer transition-all p-2';
                     
                      if (part.type === 'svg') {
                         svgContainer.innerHTML = part.svgString;
@@ -451,9 +473,8 @@
                     }
 
                     svgContainer.addEventListener('click', () => {
-                        const activeTab = document.querySelector('.tab-active').id.split('-')[1];
-                        let namePrefix = '도형';
-                        if (activeTab === 'lines') namePrefix = '선';
+                        const activeTabKey = Object.keys(tabs).find(key => tabs[key].classList.contains('tab-active')) || Object.keys(mobileTabs).find(key => mobileTabs[key].classList.contains('tab-active'));
+                        const namePrefix = activeTabKey === 'lines' ? '선' : '도형';
                         addPartToCanvas(part, namePrefix);
                     });
                     
@@ -466,14 +487,15 @@
                             e.stopPropagation();
                             showConfirmModal("파츠 삭제", "이 파츠를 영구적으로 삭제하시겠습니까?", () => {
                                 partsData[category].splice(index, 1);
-                                renderParts(category);
+                                renderParts(category, container);
                             });
                         };
                         svgContainer.appendChild(deleteBtn);
                     }
                     grid.appendChild(svgContainer);
                 });
-                partsContainer.appendChild(grid);
+                container.appendChild(grid);
+
             };
 
             // --- 레이어 패널 렌더링 ---
@@ -525,7 +547,6 @@
                         const targetObj = findObjectByUuid(obj.uuid);
                         if (targetObj) {
                             if (e.shiftKey) {
-                                // Shift-click to add to selection
                                 const activeSelection = canvas.getActiveObject();
                                 if (activeSelection && activeSelection.type === 'activeSelection') {
                                     activeSelection.addWithUpdate(targetObj);
@@ -580,8 +601,8 @@
             
             const updateAllLayerPanels = () => {
                 updateLayerList(layerListDesktopContainer);
-                if (!layerModal.classList.contains('hidden')) {
-                     updateLayerList(layerListMobileContainer);
+                if (!mobilePanelModal.classList.contains('hidden')) {
+                     updateLayerList(mobilePanelContent);
                 }
             };
 
@@ -590,12 +611,12 @@
                 tabs[key].addEventListener('click', () => {
                     Object.values(tabs).forEach(t => t.classList.remove('tab-active'));
                     tabs[key].classList.add('tab-active');
-                    renderParts(key);
+                    renderParts(key, partsContainer); // 데스크톱 컨테이너 명시
                 });
             });
 
             // 초기 렌더링
-            renderParts('shapes');
+            renderParts('shapes', partsContainer); // 데스크톱 컨테이너 명시
             updateAllLayerPanels();
 
             // --- 파츠 추가 로직 ---
@@ -773,7 +794,6 @@
             
             // --- 관리자 & 삭제 키 로직 ---
             window.addEventListener('keydown', (e) => {
-                // Del 키로 오브젝트 삭제
                 if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.tagName !== 'INPUT') {
                      const activeObjects = canvas.getActiveObjects();
                     if (activeObjects.length > 0) {
@@ -784,7 +804,6 @@
                     }
                 }
                 
-                // 관리자 모드 토글
                 if (e.ctrlKey && e.altKey && (e.key === 'a' || e.key === 'A')) {
                     e.preventDefault();
                     isAdminMode = !isAdminMode;
@@ -795,7 +814,7 @@
                     const activeTab = document.querySelector('.tab-active');
                     if (activeTab) {
                         const category = activeTab.id.split('-')[1];
-                        renderParts(category);
+                        renderParts(category, partsContainer);
                     }
                 }
             });
@@ -815,7 +834,7 @@
                     };
                     partsData.shapes.push(newPart);
                     if (tabs.shapes.classList.contains('tab-active')) {
-                        renderParts('shapes');
+                        renderParts('shapes', partsContainer);
                     }
                 };
                 reader.readAsText(file);
@@ -872,17 +891,18 @@
             });
 
             // --- 모바일 레이어 모달 로직 ---
-            toolBtns.layerMobile.addEventListener('click', () => {
-                 updateLayerList(layerListMobileContainer);
-                layerModal.classList.remove('hidden');
-                setTimeout(() => layerSheet.classList.remove('translate-y-full'), 10);
+            toolBtns.panelMobile.addEventListener('click', () => {
+                 updateLayerList(mobilePanelContent);
+                mobilePanelModal.classList.remove('hidden');
+                setTimeout(() => mobilePanelSheet.classList.remove('translate-y-full'), 10);
+                switchMobileTab('shapes');
             });
-            const closeLayerModal = () => {
-                layerSheet.classList.add('translate-y-full');
-                setTimeout(() => layerModal.classList.add('hidden'), 300);
+            const closeMobilePanel = () => {
+                mobilePanelSheet.classList.add('translate-y-full');
+                setTimeout(() => mobilePanelModal.classList.add('hidden'), 300);
             };
-            closeLayerModalBtn.addEventListener('click', closeLayerModal);
-            layerModal.addEventListener('click', (e) => { if (e.target === layerModal) closeLayerModal(); });
+            closePanelModalBtn.addEventListener('click', closeMobilePanel);
+            mobilePanelModal.addEventListener('click', (e) => { if (e.target === mobilePanelModal) closeMobilePanel(); });
             
             // --- 나머지 모든 기능들 (저장, 파일 업로드 등) ---
             uploadBtn.addEventListener('click', () => svgUploadInput.click());
@@ -1038,5 +1058,4 @@
     </script>
 </body>
 </html>
-
 
