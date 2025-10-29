@@ -433,15 +433,26 @@
                         topCutPoints = [{ x: 0, y: 0 }]; 
                     }
                 } else {
-                    // 간단한 충돌 판정
-                    let checkWidth = p.max(tileSize / 2, leftPiece.width);
-                    let checkHeight = p.max(tileSize / 2, leftPiece.height);
-                    if (leftCutPoints.length > 0 && !leftPiece.snapped && p.abs(mx - leftPiece.x) < checkWidth && p.abs(my - leftPiece.y) < checkHeight) { 
+                    // [수정] 충돌 판정 로직 버그 수정
+                    // 각 조각의 크기를 개별적으로 계산합니다.
+
+                    // 1. 왼쪽 조각 충돌 판정
+                    let leftCheckWidth = p.max(tileSize / 2, leftPiece.width);
+                    let leftCheckHeight = p.max(tileSize / 2, leftPiece.height); // leftPiece.height는 tileSize와 같음
+                    
+                    if (leftCutPoints.length > 0 && !leftPiece.snapped && p.abs(mx - leftPiece.x) < leftCheckWidth && p.abs(my - leftPiece.y) < leftCheckHeight) { 
                         draggingPiece = leftPiece;
                         dragOffsetX = mx - leftPiece.x; dragOffsetY = my - leftPiece.y;
-                    } else if (topCutPoints.length > 0 && !topPiece.snapped && p.abs(mx - topPiece.x) < checkWidth && p.abs(my - topPiece.y) < checkHeight) { 
-                        draggingPiece = topPiece;
-                        dragOffsetX = mx - topPiece.x; dragOffsetY = my - topPiece.y;
+                    
+                    } else { 
+                        // 2. 위쪽 조각 충돌 판정
+                        let topCheckWidth = p.max(tileSize / 2, topPiece.width); // topPiece.width는 tileSize와 같음
+                        let topCheckHeight = p.max(tileSize / 2, topPiece.height);
+                        
+                        if (topCutPoints.length > 0 && !topPiece.snapped && p.abs(mx - topPiece.x) < topCheckWidth && p.abs(my - topPiece.y) < topCheckHeight) { 
+                            draggingPiece = topPiece;
+                            dragOffsetX = mx - topPiece.x; dragOffsetY = my - topPiece.y;
+                        }
                     }
                 }
                 p.redraw();
@@ -575,4 +586,5 @@
     </script>
 </body>
 </html>
+
 
