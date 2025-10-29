@@ -2,120 +2,107 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>테셀레이션 도안 만들기 (Escher Style)</title>
-    <!-- Tailwind CSS 로드 --><script src="https://cdn.tailwindcss.com"></script>
-    <!-- p5.js 라이브러리 로드 --><script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    
+    <!-- Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- p5.js 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
     <style>
-        /* 기본 폰트 및 배경 설정 */
-        body {
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-            overflow: hidden; /* 스크롤 방지 */
-            margin: 0; /* body의 기본 마진 제거 */
-            background-color: #f1f5f9; /* bg-gray-100 */
+        /* p5.js 캔버스가 생성될 컨테이너 */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* UI 뒤에 배치 */
         }
         
-        /* 인쇄 시 스타일 */
+        /* 인쇄 시 UI 숨기기 */
         @media print {
-            /* 인쇄 시 UI 요소(헤더, 컨트롤 패널) 숨기기 */
-            body > div:not(#canvas-container) {
+            #controls-panel, .absolute.z-20 {
                 display: none !important;
             }
-            
-            /* 캔버스가 인쇄 페이지를 꽉 채우도록 */
             #canvas-container {
-                position: fixed !important; 
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                z-index: 9999 !important;
-            }
-
-            #canvas-container canvas {
-                width: 100% !important;
-                height: 100% !important;
+                z-index: 9999; /* 캔버스만 인쇄 */
             }
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 overflow-hidden"> <!-- 스크롤 방지 -->
 
-    <!-- [신규] 상단 헤더 (제목/로고) -->
-    <!-- [수정] 헤더 높이(padding)와 텍스트/로고 크기 축소 -->
-    <div class="absolute top-0 left-0 z-20 w-full bg-white/80 backdrop-blur-sm shadow-md pt-4 pb-4 px-6 flex justify-between items-center">
+    <!-- [수정] 상단 헤더: 모바일(기본)에서는 작게, md(768px) 이상에서는 크게 표시 -->
+    <div class="absolute top-0 left-0 z-20 w-full bg-white/80 backdrop-blur-sm shadow-md pt-2 pb-2 px-4 md:pt-4 md:pb-4 md:px-6 flex justify-between items-center">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">테셀레이션 도안 만들기</h1>
-            <p class="text-gray-600 text-sm mt-1">사각형에서 조각을 잘라 평행이동시킵니다.</p>
+            <h1 class="text-lg md:text-2xl font-bold text-gray-800">테셀레이션 도안 만들기</h1>
+            <p class="text-xs md:text-sm text-gray-600 mt-1">사각형에서 조각을 잘라 평행이동시킵니다.</p>
         </div>
-        <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-md flex-shrink-0">
+        <div class="w-8 h-8 md:w-12 md:h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white text-base md:text-xl font-bold shadow-md flex-shrink-0">
             T
         </div>
     </div>
 
-    <!-- [수정] 좌측 컨트롤 패널 (제목/로고 제거, 상단 패딩 추가) -->
-    <!-- [수정] 헤더 높이가 줄어듦에 따라 pt-36 -> pt-28 로 수정 -->
-    <div id="controls-panel" class="absolute top-0 left-0 z-10 w-full max-w-sm h-screen bg-white/80 backdrop-blur-sm shadow-lg p-8 pt-28 overflow-y-auto"> 
-        <!-- pt-28 : 상단 헤더를 위한 공간 확보 -->
+    <!-- [수정] 좌측 컨트롤 패널: 모바일(기본)에서는 패딩을 줄이고, md 이상에서는 크게 -->
+    <div id="controls-panel" class="absolute top-0 left-0 z-10 w-full max-w-sm h-screen bg-white/80 backdrop-blur-sm shadow-lg p-4 pt-16 md:p-8 md:pt-28 overflow-y-auto"> 
+        <!-- pt-16(모바일) / md:pt-28(데스크톱) : 상단 헤더를 위한 공간 확보 -->
         
-        <!-- [수정] 사용 방법 (화살표 제거) -->
         <h2 class="text-xl font-semibold text-gray-700 mb-4">사용 방법</h2>
-        <div class="space-y-4">
-            <button id="draw-left" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center">
+        <!-- [수정] space-y, my- : 모바일(기본)에서는 간격을 줄임 -->
+        <div class="space-y-2 md:space-y-4">
+            <!-- [수정] py-, text- : 모바일(기본)에서는 버튼 높이와 텍스트 크기를 줄임 -->
+            <button id="draw-left" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 md:py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center text-sm md:text-base">
                 <span>1. 왼쪽 조각 자르기</span>
             </button>
-            <!-- [삭제] 화살표 제거 -->
-            <!-- <div class="text-center text-gray-400 text-2xl">&darr;</div> -->
-            <button id="draw-top" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center">
+            <button id="draw-top" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 md:py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center text-sm md:text-base">
                 <span>2. 위쪽 조각 자르기</span>
             </button>
-            <!-- [삭제] 화살표 제거 -->
-            <!-- <div class="text-center text-gray-400 text-2xl">&darr;</div> -->
-            <button id="print" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center">
+            <button id="print" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 md:py-3 px-4 rounded-lg transition duration-200 shadow-md flex items-center justify-center text-sm md:text-base">
                 <span>3. 인쇄하기</span>
             </button>
             
-            <!-- [유지] 구분선 -->
-            <span class="block border-t border-gray-300 my-6"></span>
-            <button id="reset" class="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+            <span class="block border-t border-gray-300 my-4 md:my-6"></span>
+            <button id="reset" class="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 md:py-3 px-4 rounded-lg transition duration-200 text-sm md:text-base">
                 초기화
             </button>
         </div>
     </div>
     
     <!-- 캔버스 컨테이너 (전체 화면) -->
-    <div id="canvas-container" class="absolute top-0 left-0 w-screen h-screen z-0">
-        <!-- p5.js 캔버스가 여기에 삽입됩니다 -->
-    </div>
+    <div id="canvas-container"></div>
 
     <script>
         // === 전역 변수 설정 ===
-        let tileSize = 200;   
-        let tileX, tileY;     
-        
-        let errorMsg = ''; // 캔버스에 표시할 에러 메시지
-        let controlsWidth = 384; // 컨트롤 패널 너비 (max-w-sm)
+        let tileSize = 200;   // 기본 타일 크기
+        let tileX, tileY;     // 타일이 그려질 시작 위치 (중앙 정렬용)
+        let controlsWidth = 0; // 컨트롤 패널 너비
 
-        let leftCutPoints = [];  
-        let topCutPoints = [];   
+        let leftCutPoints = [];  // 왼쪽 변을 따라 잘라낸 조각의 점들
+        let topCutPoints = [];   // 위쪽 변을 따라 잘라낸 조각의 점들
 
         let leftPiece = { points: [], x: 0, y: 0, width: 0, height: 0, active: false, snapped: false };
         let topPiece = { points: [], x: 0, y: 0, width: 0, height: 0, active: false, snapped: false };
 
-        let drawingState = 'none'; 
+        let drawingState = 'none'; // 'left', 'top', 'none'
         let isDrawing = false;
-        let showTessellation = false; 
+        let showTessellation = false; // 인쇄 버튼이 눌렸는지 여부 (이제 draw()에서 직접 사용되진 않음)
 
-        let draggingPiece = null; 
-        let dragOffsetX, dragOffsetY; 
+        let draggingPiece = null; // 현재 드래그 중인 조각 ('leftPiece' 또는 'topPiece')
+        let dragOffsetX, dragOffsetY; // 드래그 시작 시 마우스와 조각 위치의 차이
 
-        let colorA, colorB, guideColor; 
+        let colorA, colorB, guideColor; // 타일 및 안내선 색상
+        
+        let errorMsg = ""; // 사용자에게 보여줄 안내 메시지
+        let errorTimer = 0; // 메시지 타이머
 
         // === p5.js 스케치 ===
 
         const sketch = (p) => {
             
             let controlsPanel; // 컨트롤 패널 DOM 요소
+            let headerEl; // 상단 헤더 DOM 요소
 
             p.setup = () => {
                 const container = document.getElementById('canvas-container');
@@ -123,333 +110,325 @@
                 cnv.parent('canvas-container');
 
                 controlsPanel = document.getElementById('controls-panel');
+                headerEl = document.querySelector('.absolute.z-20'); // 헤더 요소 선택
+                
+                // [수정] 헤더 높이를 읽어와서 tileY 계산
+                let headerHeight = headerEl ? headerEl.offsetHeight : 80; // 헤더 실제 높이 (기본값 80)
                 controlsWidth = controlsPanel.offsetWidth;
 
-                // tileX/Y 계산: 좌측 패널을 제외한 영역의 중앙
                 tileX = controlsWidth + ( (p.windowWidth - controlsWidth) / 2 ) - (tileSize / 2); 
-                tileY = (p.windowHeight / 2) - (tileSize / 2); // 세로 중앙
+                // [수정] tileY: 헤더 높이를 제외한 영역의 세로 중앙
+                tileY = headerHeight + ((p.windowHeight - headerHeight) / 2) - (tileSize / 2); 
 
                 colorA = p.color(110, 168, 255, 200); // Blue
                 colorB = p.color(255, 255, 255, 200); // White
-                guideColor = p.color(255, 0, 0, 150); // Red (drawing guide)
+                guideColor = p.color(220, 38, 38, 200); // Red (drawing guide)
 
-                p.strokeWeight(3); // 기본 선 굵기
+                p.strokeWeight(2);
+                p.redraw();
             };
 
             p.draw = () => {
-                p.background(241, 245, 249); // bg-gray-100
+                p.clear(); // 캔버스를 투명하게 지움
+                p.background(241, 245, 249); // bg-gray-100 (CSS와 동일)
 
-                // === 좌표계 이동 ===
-                p.translate(tileX, tileY);
+                // 1. 점 그리드 그리기
+                drawGrid();
 
-                // 모눈종이 배경 그리기
-                drawGrid(); 
+                // 2. 실시간 테셀레이션 윤곽선 그리기
+                drawTessellation(false); // 채우기(fill) 없이 윤곽선만
 
-                if (showTessellation) {
-                    drawTessellation();
-                } else {
-                    if (leftCutPoints.length > 2 || topCutPoints.length > 2) {
-                        drawTessellationOutline();
+                // 3. 중앙 작업 타일 그리기 (항상 맨 위에)
+                drawConstruction();
+
+                // 4. 상태 메시지 그리기
+                drawStatusText();
+                
+                if (errorTimer > 0) {
+                    errorTimer -= p.deltaTime;
+                    if (errorTimer <= 0) {
+                        errorMsg = "";
+                        p.redraw(); // 메시지 지우기
                     }
-                    drawConstruction();
                 }
                 
-                // 캔버스에 텍스트 그리기
-                drawStatusText();
-
-                p.noLoop(); 
+                // p5.js 루프를 멈추고, 변경 사항이 있을 때만 redraw() 호출
+                p.noLoop();
             };
             
-            // --- 그리기 함수들 ---
-            
-            /** 타일 모양을 그리는 핵심 함수 */
-            function drawTileShape(ox, oy, fillColor) {
-                p.fill(fillColor);
-                p.stroke(30); 
-                p.strokeWeight(2.5); // 타일 선 굵기
+            /** 점 그리드를 그리는 함수 */
+            function drawGrid() {
+                p.stroke(200, 200, 200, 100); // 점 색상
+                p.strokeWeight(2); // 점 크기
+                
+                // 중앙 타일 위치에 맞게 그리드 오프셋 조정
+                let offsetX = tileX % 20;
+                let offsetY = tileY % 20;
+
+                for (let x = -offsetX; x < p.width; x += 20) {
+                    for (let y = -offsetY; y < p.height; y += 20) {
+                        p.point(x, y);
+                    }
+                }
+            }
+
+            /** 타일 모양을 그리는 핵심 함수 (채우기/윤곽선 모드) */
+            function drawTileShape(ox, oy, doFill, fillColor) {
+                if (doFill) {
+                    p.fill(fillColor);
+                    p.stroke(30); 
+                    p.strokeWeight(1.5); // 인쇄 시 윤곽선
+                } else {
+                    p.noFill();
+                    p.stroke(150, 150, 150, 100); // 실시간 윤곽선
+                    p.strokeWeight(1);
+                }
 
                 p.beginShape();
+
                 // 1. 위쪽 변
-                if (topCutPoints.length === 0 || !topPiece.snapped) {
-                    p.vertex(ox, oy); p.vertex(ox + tileSize, oy);
+                if (topCutPoints.length === 0 || (!topPiece.snapped && !doFill)) {
+                    p.vertex(ox, oy);
+                    p.vertex(ox + tileSize, oy);
                 } else {
-                    for (let pt of topCutPoints) { p.vertex(ox + pt.x, oy + pt.y); }
+                    for (let pt of topCutPoints) {
+                        p.vertex(ox + pt.x, oy + pt.y);
+                    }
                 }
+
                 // 2. 오른쪽 변
-                if (leftCutPoints.length === 0 || !leftPiece.snapped) {
+                if (leftCutPoints.length === 0 || (!leftPiece.snapped && !doFill)) {
                     p.vertex(ox + tileSize, oy + tileSize);
                 } else {
-                    for (let pt of leftCutPoints) { p.vertex(ox + tileSize + pt.x, oy + pt.y); }
+                    for (let pt of leftCutPoints) {
+                        p.vertex(ox + tileSize + pt.x, oy + pt.y);
+                    }
                 }
+
                 // 3. 아래쪽 변
-                if (topCutPoints.length === 0 || !topPiece.snapped) {
+                if (topCutPoints.length === 0 || (!topPiece.snapped && !doFill)) {
                     p.vertex(ox, oy + tileSize);
                 } else {
                     for (let i = topCutPoints.length - 1; i >= 0; i--) {
-                        p.vertex(ox + topCutPoints[i].x, oy + tileSize + topCutPoints[i].y);
+                        let pt = topCutPoints[i];
+                        p.vertex(ox + pt.x, oy + tileSize + pt.y);
                     }
                 }
+
                 // 4. 왼쪽 변
-                if (leftCutPoints.length === 0 || !leftPiece.snapped) {
+                if (leftCutPoints.length === 0 || (!leftPiece.snapped && !doFill)) {
                     p.vertex(ox, oy);
                 } else {
                     for (let i = leftCutPoints.length - 1; i >= 0; i--) {
-                        p.vertex(ox + leftCutPoints[i].x, oy + leftCutPoints[i].y);
+                        let pt = leftCutPoints[i];
+                        p.vertex(ox + pt.x, oy + pt.y);
                     }
                 }
+
                 p.endShape(p.CLOSE);
                 p.noFill();
             }
 
-            /** 그리기 및 조각 이동 과정을 보여주는 함수 */
+            /** 그리기 및 조각 이동 과정을 보여주는 함수 (중앙 타일) */
             function drawConstruction() {
-                p.strokeWeight(2); // 기본 사각형 굵기
-                p.stroke(200); 
-                p.noFill();
-                p.rect(0, 0, tileSize, tileSize); 
+                p.push(); // 좌표계 저장
+                p.translate(tileX, tileY); // 중앙 타일 위치로 원점 이동
 
-                // 실제 타일 채우기
-                p.fill(colorA); 
-                p.stroke(p.color(50,50,50,150)); 
-                p.strokeWeight(3); // 작업 타일 굵기
+                // 사각형 채우기 (기본 타일)
+                p.fill(colorA);
+                p.noStroke();
+                // p.rect(0, 0, tileSize, tileSize); // rect 대신 shape 사용
+                
+                // Cut-out area drawing (항상 채워진 모양)
+                p.fill(colorA);
+                p.stroke(p.color(50,50,50,150));
+                p.strokeWeight(2.5); // 더 굵게
+                
                 p.beginShape();
-                p.vertex(0, 0);
-                // 상단 변
+                // (0,0) 시작
                 if (topCutPoints.length > 0 && topPiece.snapped) {
-                    for (let pt of topCutPoints) { p.vertex(pt.x, pt.y); }
-                } else { p.vertex(tileSize, 0); }
+                    for (let pt of topCutPoints) {
+                        p.vertex(pt.x, pt.y);
+                    }
+                } else {
+                    p.vertex(0, 0);
+                    p.vertex(tileSize, 0);
+                }
+                
                 // 우측 변
                 if (leftCutPoints.length > 0 && leftPiece.snapped) {
-                     for (let pt of leftCutPoints) { p.vertex(tileSize + pt.x, pt.y); }
-                } else { p.vertex(tileSize, tileSize); }
+                     for (let pt of leftCutPoints) {
+                        p.vertex(tileSize + pt.x, pt.y);
+                    }
+                } else {
+                    p.vertex(tileSize, tileSize);
+                }
+
                 // 하단 변
                 if (topCutPoints.length > 0 && topPiece.snapped) {
                     for (let i = topCutPoints.length - 1; i >= 0; i--) {
-                        p.vertex(topCutPoints[i].x, tileSize + topCutPoints[i].y);
+                        let pt = topCutPoints[i];
+                        p.vertex(pt.x, tileSize + pt.y);
                     }
-                } else { p.vertex(0, tileSize); }
+                } else {
+                    p.vertex(0, tileSize);
+                }
+                
                 // 좌측 변
                 if (leftCutPoints.length > 0 && leftPiece.snapped) {
                     for (let i = leftCutPoints.length - 1; i >= 0; i--) {
-                        p.vertex(leftCutPoints[i].x, leftCutPoints[i].y);
+                        let pt = leftCutPoints[i];
+                        p.vertex(pt.x, pt.y);
                     }
-                } else { p.vertex(0, 0); }
+                } else {
+                    p.vertex(0, 0);
+                }
                 p.endShape(p.CLOSE);
 
                 // --- 조각 그리기 (leftPiece) ---
-                if (leftCutPoints.length > 0) {
+                if (leftCutPoints.length > 0 && !leftPiece.snapped) {
                     p.push();
-                    p.translate(leftPiece.x, leftPiece.y); 
+                    p.translate(leftPiece.x, leftPiece.y); // 조각의 현재 위치로 이동
                     if (draggingPiece === leftPiece) {
                         p.fill(p.color(59, 130, 246, 150)); 
-                        p.stroke(p.color(59, 130, 246)); p.strokeWeight(4); 
-                    } else if (!leftPiece.snapped) {
-                        p.fill(p.color(59, 130, 246, 200)); 
-                        p.stroke(p.color(59, 130, 246)); p.strokeWeight(3); 
+                        p.stroke(p.color(59, 130, 246));
+                        p.strokeWeight(3.5); // 더 굵게
+                    } else {
+                        p.fill(p.color(59, 130, 246, 200)); // 파란색
+                        p.stroke(p.color(59, 130, 246));
+                        p.strokeWeight(2.5);
                     }
-                    if (!leftPiece.snapped || draggingPiece === leftPiece) {
-                         drawPieceShape(leftCutPoints);
-                    }
+                    drawPieceShape(leftCutPoints);
                     p.pop();
-                    // 스냅 가이드
-                    if (drawingState === 'none' && !leftPiece.snapped && draggingPiece !== leftPiece) {
-                        const snapX = tileSize; 
-                        p.stroke(p.color(59, 130, 246, 100)); 
-                        p.drawingContext.setLineDash([5, 5]);
-                        p.beginShape();
-                        for (let pt of leftCutPoints) { p.vertex(snapX + pt.x, pt.y); }
-                        p.endShape();
-                        p.drawingContext.setLineDash([]);
-                    }
                 }
 
                 // --- 조각 그리기 (topPiece) ---
-                if (topCutPoints.length > 0) {
+                if (topCutPoints.length > 0 && !topPiece.snapped) {
                     p.push();
-                    p.translate(topPiece.x, topPiece.y); 
+                    p.translate(topPiece.x, topPiece.y); // 조각의 현재 위치로 이동
                     if (draggingPiece === topPiece) {
                         p.fill(p.color(34, 197, 94, 150)); 
-                        p.stroke(p.color(34, 197, 94)); p.strokeWeight(4); 
-                    } else if (!topPiece.snapped) {
-                        p.fill(p.color(34, 197, 94, 200)); 
-                        p.stroke(p.color(34, 197, 94)); p.strokeWeight(3); 
+                        p.stroke(p.color(34, 197, 94));
+                        p.strokeWeight(3.5); // 더 굵게
+                    } else {
+                        p.fill(p.color(34, 197, 94, 200)); // 초록색
+                        p.stroke(p.color(34, 197, 94));
+                        p.strokeWeight(2.5);
                     }
-                     if (!topPiece.snapped || draggingPiece === topPiece) {
-                        drawPieceShape(topCutPoints);
-                    }
+                    drawPieceShape(topCutPoints);
                     p.pop();
-                     // 스냅 가이드
-                    if (drawingState === 'none' && !topPiece.snapped && draggingPiece !== topPiece) {
-                        const snapY = tileSize; 
-                        p.stroke(p.color(34, 197, 94, 100)); 
-                        p.drawingContext.setLineDash([5, 5]);
-                        p.beginShape();
-                        for (let pt of topCutPoints) { p.vertex(pt.x, snapY + pt.y); }
-                        p.endShape();
-                        p.drawingContext.setLineDash([]);
-                    }
                 }
 
-                // 그리기 모드 안내선 (점선)
-                p.strokeWeight(3); // 안내선 굵기
+                // 현재 그리기 모드에 따라 안내선 강조
+                p.strokeWeight(3.5); // 더 굵게
                 p.stroke(guideColor);
                 p.noFill();
+                p.drawingContext.setLineDash([8, 8]); // 점선
+                if (drawingState === 'left') {
+                    p.line(0, 0, 0, tileSize);
+                } else if (drawingState === 'top') {
+                    p.line(0, 0, tileSize, 0);
+                }
+                p.drawingContext.setLineDash([]); // 점선 해제
                 
-                p.drawingContext.setLineDash([10, 5]); // 점선 스타일
-
-                if (drawingState === 'left') { p.line(0, 0, 0, tileSize); } 
-                else if (drawingState === 'top') { p.line(0, 0, tileSize, 0); }
-
-                p.drawingContext.setLineDash([]); // 점선 스타일 해제
+                p.pop(); // 원점 복구
             }
 
             /** 주어진 점들로 다각형을 그리는 헬퍼 함수 */
             function drawPieceShape(points) {
                 p.beginShape();
-                for (let pt of points) { p.vertex(pt.x, pt.y); }
+                for (let pt of points) {
+                    p.vertex(pt.x, pt.y);
+                }
                 p.endShape(p.CLOSE);
             }
 
-            /** 모눈종이 배경 그리기 (점으로 변경) */
-            function drawGrid() {
-                let gridSpacing = 20; 
-                p.fill(220); // 점 색상
-                p.noStroke();
+            /** 테셀레이션 모드일 때 타일 반복해서 그리기 */
+            function drawTessellation(doFill) {
+                // tileX, tileY 기준으로 그리드 정렬
+                let startX = tileX % tileSize;
+                let startY = tileY % tileSize;
                 
-                const startX = -tileX; const startY = -tileY;
-                const endX = p.width - tileX; const endY = p.height - tileY;
-                let firstGridX = p.floor(startX / gridSpacing) * gridSpacing;
-                let firstGridY = p.floor(startY / gridSpacing) * gridSpacing;
-
-                for (let x = firstGridX; x < endX; x += gridSpacing) {
-                    for (let y = firstGridY; y < endY; y += gridSpacing) {
-                        p.circle(x, y, 2); // 2px 지름의 원 (점)
-                    }
-                }
-            }
-
-
-            /** 테셀레이션 윤곽선 실시간 그리기 */
-            function drawTessellationOutline() {
-                const startX = p.floor(-tileX / tileSize) * tileSize;
-                const startY = p.floor(-tileY / tileSize) * tileSize;
-                const endX = p.width - tileX; 
-                const endY = p.height - tileY;
-
-                for (let y = startY; y < endY; y += tileSize) {
-                    for (let x = startX; x < endX; x += tileSize) {
-                        drawTileOutline(x, y);
-                    }
-                }
-            }
-
-            /** 타일 윤곽선 하나 그리기 */
-            function drawTileOutline(ox, oy) {
-                p.noFill();
-                p.stroke(100, 100, 200, 100); 
-                p.strokeWeight(2); // 윤곽선 굵기
-                
-                p.beginShape();
-                // 1. Top edge
-                if (topCutPoints.length > 2) {
-                    for (let pt of topCutPoints) { p.vertex(ox + pt.x, oy + pt.y); }
-                } else { p.vertex(ox, oy); p.vertex(ox + tileSize, oy); }
-                // 2. Right edge
-                if (leftCutPoints.length > 2) {
-                    for (let pt of leftCutPoints) { p.vertex(ox + tileSize + pt.x, oy + pt.y); }
-                } else { p.vertex(ox + tileSize, oy + tileSize); }
-                // 3. Bottom edge
-                if (topCutPoints.length > 2) {
-                    for (let i = topCutPoints.length - 1; i >= 0; i--) {
-                        p.vertex(ox + topCutPoints[i].x, oy + tileSize + topCutPoints[i].y);
-                    }
-                } else { p.vertex(ox, oy + tileSize); }
-                // 4. Left edge
-                if (leftCutPoints.length > 2) {
-                    for (let i = leftCutPoints.length - 1; i >= 0; i--) {
-                        p.vertex(ox + leftCutPoints[i].x, oy + leftCutPoints[i].y);
-                    }
-                } else { p.vertex(ox, oy); }
-                p.endShape(p.CLOSE);
-            }
-
-            /** 테셀레이션 모드일 때 타일 반복 그리기 */
-            function drawTessellation() {
-                const startX = p.floor(-tileX / tileSize) * tileSize;
-                const startY = p.floor(-tileY / tileSize) * tileSize;
-                const endX = p.width - tileX; 
-                const endY = p.height - tileY;
-
-                for (let y = startY; y < endY; y += tileSize) {
-                    for (let x = startX; x < endX; x += tileSize) {
+                // 캔버스 밖까지 그리도록 범위 확장
+                for (let y = -startY - tileSize; y < p.height; y += tileSize) {
+                    for (let x = -startX - tileSize; x < p.width; x += tileSize) {
                         let color = ((Math.floor(x / tileSize) + Math.floor(y / tileSize)) % 2 === 0) ? colorA : colorB;
-                        drawTileShape(x, y, color);
+                        drawTileShape(x, y, doFill, color);
                     }
                 }
             }
 
-            /** 상태 메시지를 캔버스에 직접 그리기 */
+            /** 상태 메시지 업데이트 (캔버스에 직접 그리기) */
             function drawStatusText() {
                 let msg = errorMsg; // 에러 메시지를 우선 표시
 
-                if (msg === '') { // 에러가 없으면 일반 상태 메시지 확인
-                    if (drawingState === 'left') { msg = '왼쪽 변을 잘라내고 있습니다...'; } 
-                    else if (drawingState === 'top') { msg = '위쪽 변을 잘라내고 있습니다...'; } 
-                    else if (draggingPiece === leftPiece) { msg = '파란색 조각을 오른쪽으로 드래그하여 붙이세요.'; } 
-                    else if (draggingPiece === topPiece) { msg = '초록색 조각을 아래쪽으로 드래그하여 붙이세요.'; } 
-                    else if (leftCutPoints.length > 0 && !leftPiece.snapped) { msg = '파란색 조각을 클릭하여 오른쪽으로 이동하세요.'; } 
-                    else if (topCutPoints.length > 0 && !topPiece.snapped) { msg = '초록색 조각을 클릭하여 아래쪽으로 이동하세요.'; }
-                }
-                
-                if (msg) {
-                    p.push(); // p5.js의 그리기 상태 저장
-                    p.fill(220, 0, 0); // (빨간색)
-                    p.stroke(255);     // (흰색 테두리)
-                    p.strokeWeight(3);
-                    p.textStyle(p.BOLD);
-                    p.textSize(24);
-                    p.textAlign(p.CENTER, p.BOTTOM); // 텍스트 정렬
-                    
-                    // [수정] 텍스트 위치: 위로 더 올림 (-30 -> -60)
-                    p.text(msg, tileSize / 2, -60); 
-                    p.pop(); // p5.js의 그리기 상태 복원
+                if (msg === "") { // 에러가 없으면 상태 메시지 표시
+                    if (drawingState === 'left') {
+                        msg = '왼쪽 변을 따라 자유롭게 선을 그려보세요.';
+                    } else if (drawingState === 'top') {
+                        msg = '위쪽 변을 따라 자유롭게 선을 그려보세요.';
+                    } else if (draggingPiece === leftPiece) {
+                        msg = '파란색 조각을 오른쪽으로 드래그하여 붙이세요.';
+                    } else if (draggingPiece === topPiece) {
+                        msg = '초록색 조각을 아래쪽으로 드래그하여 붙이세요.';
+                    } else if (leftCutPoints.length > 0 && !leftPiece.snapped) {
+                        msg = '파란색 조각을 클릭하여 오른쪽으로 이동하세요.';
+                    } else if (topCutPoints.length > 0 && !topPiece.snapped) {
+                        msg = '초록색 조각을 클릭하여 아래쪽으로 이동하세요.';
+                    } else if (leftPiece.snapped && topPiece.snapped) {
+                        msg = '완성되었습니다! 인쇄 버튼을 누르세요.';
+                    }
                 }
 
-                // 에러 메시지는 한 번 그린 후 초기화
-                if (errorMsg !== '') {
-                    errorMsg = '';
+                if (msg) {
+                    p.push();
+                    p.translate(tileX, tileY); // 중앙 타일 기준
+                    p.fill(guideColor); // 빨간색
+                    p.noStroke();
+                    p.textAlign(p.CENTER, p.BOTTOM);
+                    p.textSize(16);
+                    p.textStyle(p.BOLD);
+                    p.text(msg, tileSize / 2, -60); // [수정] 기존 -30 -> -60으로 더 올림
+                    p.pop();
                 }
             }
 
             // === p5.js 마우스 이벤트 핸들러 ===
 
             p.mousePressed = (event) => {
-                const mx = p.mouseX - tileX; 
-                const my = p.mouseY - tileY; 
+                // UI 클릭 시 캔버스 이벤트 무시
+                if (event.target.closest('#controls-panel') || event.target.closest('.absolute.z-20')) {
+                    return;
+                }
+                
+                const mx = p.mouseX - tileX; // 타일 기준 마우스 X
+                const my = p.mouseY - tileY; // 타일 기준 마우스 Y
 
                 if (drawingState !== 'none') {
+                    // 그리기 모드
                     isDrawing = true;
                     if (drawingState === 'left') {
-                        leftCutPoints = [{ x: 0, y: 0 }]; 
+                        leftCutPoints = [];
+                        leftCutPoints.push({ x: 0, y: 0 }); // 시작점 (0, 0)
                     } else if (drawingState === 'top') {
-                        topCutPoints = [{ x: 0, y: 0 }]; 
+                        topCutPoints = [];
+                        topCutPoints.push({ x: 0, y: 0 }); // 시작점 (0, 0)
                     }
                 } else {
-                    // [수정] 충돌 판정 로직 버그 수정
-                    // 각 조각의 크기를 개별적으로 계산합니다.
-
-                    // 1. 왼쪽 조각 충돌 판정
-                    let leftCheckWidth = p.max(tileSize / 2, leftPiece.width);
-                    let leftCheckHeight = p.max(tileSize / 2, leftPiece.height); // leftPiece.height는 tileSize와 같음
+                    // 드래그 모드
+                    // [수정] 조각 클릭 판정 버그 수정
+                    // 각 조각의 실제 크기를 기반으로 충돌 영역 계산
+                    
+                    let leftCheckWidth = p.max(tileSize / 2, leftPiece.width * 1.5); // 판정 영역을 너비에 비례해 넓힘
+                    let leftCheckHeight = p.max(tileSize / 2, leftPiece.height);
                     
                     if (leftCutPoints.length > 0 && !leftPiece.snapped && p.abs(mx - leftPiece.x) < leftCheckWidth && p.abs(my - leftPiece.y) < leftCheckHeight) { 
                         draggingPiece = leftPiece;
                         dragOffsetX = mx - leftPiece.x; dragOffsetY = my - leftPiece.y;
-                    
                     } else { 
-                        // 2. 위쪽 조각 충돌 판정
-                        let topCheckWidth = p.max(tileSize / 2, topPiece.width); // topPiece.width는 tileSize와 같음
-                        let topCheckHeight = p.max(tileSize / 2, topPiece.height);
+                        // [수정] topPiece의 너비(width)와 높이(height)를 사용하도록 수정
+                        let topCheckWidth = p.max(tileSize / 2, topPiece.width);
+                        let topCheckHeight = p.max(tileSize / 2, topPiece.height * 1.5); // 판정 영역을 높이에 비례해 넓힘
                         
                         if (topCutPoints.length > 0 && !topPiece.snapped && p.abs(mx - topPiece.x) < topCheckWidth && p.abs(my - topPiece.y) < topCheckHeight) { 
                             draggingPiece = topPiece;
@@ -461,36 +440,54 @@
             };
 
             p.mouseDragged = () => {
+                // 마우스가 캔버스 밖으로 나가도 계속 그리거나 드래그할 수 있게 함
+                
                 const mx = p.mouseX - tileX;
                 const my = p.mouseY - tileY;
 
                 if (isDrawing) {
+                    // 잘라내기 선 그리기 (영역 제한)
                     if (drawingState === 'left') {
-                        let constrainedX = p.constrain(mx, -tileSize / 2, tileSize / 2); 
-                        let constrainedY = p.constrain(my, 0, tileSize); 
+                        let constrainedX = p.constrain(mx, -tileSize / 2, tileSize / 2); // 좌우 50%
+                        let constrainedY = p.constrain(my, 0, tileSize); // 상하 100%
                         leftCutPoints.push({ x: constrainedX, y: constrainedY });
                     } else if (drawingState === 'top') {
-                        let constrainedX = p.constrain(mx, 0, tileSize); 
-                        let constrainedY = p.constrain(my, -tileSize / 2, tileSize / 2); 
+                        let constrainedX = p.constrain(mx, 0, tileSize); // 좌우 100%
+                        let constrainedY = p.constrain(my, -tileSize / 2, tileSize / 2); // 상하 50%
                         topCutPoints.push({ x: constrainedX, y: constrainedY });
                     }
                 } else if (draggingPiece) {
+                    // 조각 드래그
                     if (draggingPiece === leftPiece) {
                         draggingPiece.x = mx - dragOffsetX;
                         draggingPiece.y = my - dragOffsetY;
+                        // y축 이동 제한 (0에서 tileSize까지)
                         draggingPiece.y = p.constrain(draggingPiece.y, 0, tileSize - leftPiece.height); 
-                        draggingPiece.x = p.constrain(draggingPiece.x, -tileSize / 2, tileSize); 
-                        if (p.abs(draggingPiece.x - tileSize) < 20) { 
-                            draggingPiece.x = tileSize; draggingPiece.snapped = true;
-                        } else { draggingPiece.snapped = false; }
+                        // x축은 이동만
+                        draggingPiece.x = p.constrain(draggingPiece.x, -tileSize / 2, tileSize); // 왼쪽으로 너무 멀리 가지 않도록 제한
+                        
+                        // 스냅 로직
+                        if (p.abs(draggingPiece.x - tileSize) < 20) { // 오른쪽 변에 가까워지면
+                            draggingPiece.x = tileSize;
+                            draggingPiece.snapped = true;
+                        } else {
+                            draggingPiece.snapped = false;
+                        }
                     } else if (draggingPiece === topPiece) {
                         draggingPiece.x = mx - dragOffsetX;
                         draggingPiece.y = my - dragOffsetY;
+                        // x축 이동 제한 (0에서 tileSize까지)
                         draggingPiece.x = p.constrain(draggingPiece.x, 0, tileSize - topPiece.width);
-                        draggingPiece.y = p.constrain(draggingPiece.y, -tileSize / 2, tileSize); 
-                        if (p.abs(draggingPiece.y - tileSize) < 20) { 
-                            draggingPiece.y = tileSize; draggingPiece.snapped = true;
-                        } else { draggingPiece.snapped = false; }
+                        // y축은 이동만
+                        draggingPiece.y = p.constrain(draggingPiece.y, -tileSize / 2, tileSize); // 위쪽으로 너무 멀리 가지 않도록 제한
+
+                        // 스냅 로직
+                        if (p.abs(draggingPiece.y - tileSize) < 20) { // 아래쪽 변에 가까워지면
+                            draggingPiece.y = tileSize;
+                            draggingPiece.snapped = true;
+                        } else {
+                            draggingPiece.snapped = false;
+                        }
                     }
                 }
                 p.redraw();
@@ -499,15 +496,19 @@
             p.mouseReleased = () => {
                 if (isDrawing) {
                     if (drawingState === 'left') {
-                        leftCutPoints.push({ x: 0, y: tileSize }); 
+                        leftCutPoints.push({ x: 0, y: tileSize }); // 끝점 (0, H)
+                        // 조각의 초기 위치 설정
                         leftPiece.points = leftCutPoints;
-                        leftPiece.x = 0; leftPiece.y = 0;
+                        leftPiece.x = 0; // 초기 위치
+                        leftPiece.y = 0;
                         leftPiece.width = p.max(leftCutPoints.map(pt => pt.x)) - p.min(leftCutPoints.map(pt => pt.x));
                         leftPiece.height = tileSize;
                     } else if (drawingState === 'top') {
-                        topCutPoints.push({ x: tileSize, y: 0 }); 
+                        topCutPoints.push({ x: tileSize, y: 0 }); // 끝점 (W, 0)
+                        // 조각의 초기 위치 설정
                         topPiece.points = topCutPoints;
-                        topPiece.x = 0; topPiece.y = 0;
+                        topPiece.x = 0; // 초기 위치
+                        topPiece.y = 0;
                         topPiece.width = tileSize;
                         topPiece.height = p.max(topCutPoints.map(pt => pt.y)) - p.min(topCutPoints.map(pt => pt.y));
                     }
@@ -515,7 +516,9 @@
                     isDrawing = false;
                 } else if (draggingPiece) {
                     if (!draggingPiece.snapped) {
-                        draggingPiece.x = 0; draggingPiece.y = 0; 
+                        // 스냅 안 되면 원래 위치로 (옵션)
+                        draggingPiece.x = 0;
+                        draggingPiece.y = 0;
                     }
                     draggingPiece = null;
                 }
@@ -524,10 +527,15 @@
 
             p.windowResized = () => {
                 p.resizeCanvas(p.windowWidth, p.windowHeight);
-    
-                controlsWidth = controlsPanel.offsetWidth; // 패널 너비 다시 계산
+                
+                // [수정] 창 크기 조절 시에도 헤더 높이와 패널 너비를 다시 계산
+                let headerHeight = headerEl ? headerEl.offsetHeight : 80;
+                controlsWidth = controlsPanel.offsetWidth; 
+                
                 tileX = controlsWidth + ( (p.windowWidth - controlsWidth) / 2 ) - (tileSize / 2);
-                tileY = (p.windowHeight / 2) - (tileSize / 2);
+                // [수정] tileY: 헤더 높이를 제외한 영역의 세로 중앙
+                tileY = headerHeight + ((p.windowHeight - headerHeight) / 2) - (tileSize / 2);
+                
                 p.redraw(); 
             };
             
@@ -535,9 +543,11 @@
             // 터치 이벤트가 발생하면, 기존의 마우스 이벤트 함수를 호출합니다.
             
             p.touchStarted = (event) => {
-                // p.mousePressed(event); // 마우스 이벤트 핸들러 호출
-                // event.preventDefault()를 호출하기 위해, 마우스 핸들러 내용을 여기에 복사합니다.
-                
+                // UI 클릭 시 캔버스 이벤트 무시
+                if (event.target.closest('#controls-panel') || event.target.closest('.absolute.z-20')) {
+                    return true; // 기본 동작 허용 (스크롤 등)
+                }
+
                 const mx = p.mouseX - tileX; 
                 const my = p.mouseY - tileY; 
 
@@ -549,8 +559,8 @@
                         topCutPoints = [{ x: 0, y: 0 }]; 
                     }
                 } else {
-                    // 충돌 판정 로직
-                    let leftCheckWidth = p.max(tileSize / 2, leftPiece.width);
+                    // [수정] 조각 클릭 판정 버그 수정 (마우스와 동일)
+                    let leftCheckWidth = p.max(tileSize / 2, leftPiece.width * 1.5);
                     let leftCheckHeight = p.max(tileSize / 2, leftPiece.height);
                     
                     if (leftCutPoints.length > 0 && !leftPiece.snapped && p.abs(mx - leftPiece.x) < leftCheckWidth && p.abs(my - leftPiece.y) < leftCheckHeight) { 
@@ -558,7 +568,7 @@
                         dragOffsetX = mx - leftPiece.x; dragOffsetY = my - leftPiece.y;
                     } else { 
                         let topCheckWidth = p.max(tileSize / 2, topPiece.width);
-                        let topCheckHeight = p.max(tileSize / 2, topPiece.height);
+                        let topCheckHeight = p.max(tileSize / 2, topPiece.height * 1.5);
                         
                         if (topCutPoints.length > 0 && !topPiece.snapped && p.abs(mx - topPiece.x) < topCheckWidth && p.abs(my - topPiece.y) < topCheckHeight) { 
                             draggingPiece = topPiece;
@@ -572,8 +582,10 @@
             };
 
             p.touchMoved = (event) => {
-                // p.mouseDragged(event); // 마우스 이벤트 핸들러 호출
-                // event.preventDefault()를 호출하기 위해, 마우스 핸들러 내용을 여기에 복사합니다.
+                // UI 위에서 터치 이동 시 기본 스크롤 허용
+                if (event.target.closest('#controls-panel') || event.target.closest('.absolute.z-20')) {
+                    return true;
+                }
 
                 const mx = p.mouseX - tileX;
                 const my = p.mouseY - tileY;
@@ -613,8 +625,10 @@
             };
             
             p.touchEnded = (event) => {
-                // p.mouseReleased(event); // 마우스 이벤트 핸들러 호출
-                // event.preventDefault()를 호출하기 위해, 마우스 핸들러 내용을 여기에 복사합니다.
+                // UI 위에서 터치 종료 시 기본 동작 허용
+                if (event.target.closest('#controls-panel') || event.target.closest('.absolute.z-20')) {
+                    return true;
+                }
 
                 if (isDrawing) {
                     if (drawingState === 'left') {
@@ -643,50 +657,73 @@
                 return false; // 페이지 스크롤 등 기본 터치 동작 방지
             };
 
+            // === [신규] 인쇄 로직 (스케치 내부 함수) ===
+            p.triggerPrint = () => {
+                if (!leftPiece.snapped || !topPiece.snapped) {
+                    setErrorMessage("모든 조각을 이동시켜야 인쇄할 수 있습니다.");
+                    return;
+                }
+                
+                // 인쇄용 전체 화면 그리기 (p5.js 루프를 임시로 재시작)
+                p.loop(); // 루프 시작
+                p.clear();
+                p.background(255); // 흰색 배경
+                // [수정] 오타 수정: drawTSessellation -> drawTessellation
+                drawTessellation(true); // 채워진 테셀레이션 그리기
+                p.noLoop(); // 그리기 완료 후 루프 정지
+                
+                window.print(); // 인쇄 대화상자 열기
+                
+                // 인쇄 후 원래 상태로 복구 (루프 정지 및 다시 그리기)
+                p.clear();
+                p.redraw(); // draw() 함수 1회 호출
+            };
+
 
         }; // End of sketch function
 
         let myp5 = new p5(sketch);
 
         // === HTML 버튼 이벤트 핸들러 ===
+        
+        function setErrorMessage(msg) {
+            errorMsg = msg;
+            errorTimer = 3000; // 3초
+            myp5.redraw();
+        }
+
         document.getElementById('draw-left').addEventListener('click', () => {
+            if (drawingState !== 'none') return;
+            if (showTessellation) showTessellation = false;
+            
             drawingState = 'left';
-            showTessellation = false; 
-            leftCutPoints = []; 
-            leftPiece.snapped = false; leftPiece.x = 0; leftPiece.y = 0; 
+            leftCutPoints = []; // 리셋
+            leftPiece.snapped = false;
+            leftPiece.x = 0; leftPiece.y = 0; // 조각 위치 리셋
             myp5.redraw();
         });
 
         document.getElementById('draw-top').addEventListener('click', () => {
+            if (drawingState !== 'none') return;
             if (!leftPiece.snapped) {
-                // 캔버스에 에러 메시지 설정
-                errorMsg = '먼저 왼쪽 조각을 오른쪽으로 이동시켜야 합니다.';
-                myp5.redraw();
+                setErrorMessage("먼저 왼쪽 조각을 오른쪽으로 이동시켜야 합니다.");
                 return;
             }
+            if (showTessellation) showTessellation = false;
+
             drawingState = 'top';
-            showTessellation = false; 
-            topCutPoints = []; 
-            topPiece.snapped = false; topPiece.x = 0; topPiece.y = 0; 
+            topCutPoints = []; // 리셋
+            topPiece.snapped = false;
+            topPiece.x = 0; topPiece.y = 0; // 조각 위치 리셋
             myp5.redraw();
         });
 
         document.getElementById('print').addEventListener('click', () => {
-            if (!leftPiece.snapped || !topPiece.snapped) {
-                // 캔버스에 에러 메시지 설정
-                errorMsg = '모든 조각을 이동시켜야 인쇄할 수 있습니다.';
-                myp5.redraw();
-                return;
-            }
-            drawingState = 'none';
-            showTessellation = true; 
-            myp5.redraw(); 
-            
-            setTimeout(window.print, 500); 
+            // [수정] 스케치 내부에 정의된 triggerPrint 함수를 호출
+            myp5.triggerPrint();
         });
 
         document.getElementById('reset').addEventListener('click', () => {
-            errorMsg = ''; // 리셋 시 에러 메시지 초기화
             leftCutPoints = [];
             topCutPoints = [];
             leftPiece = { points: [], x: 0, y: 0, width: 0, height: 0, active: false, snapped: false };
@@ -695,13 +732,12 @@
             isDrawing = false;
             showTessellation = false;
             draggingPiece = null;
+            errorMsg = ""; // 메시지 초기화
+            errorTimer = 0;
             myp5.redraw(); 
         });
 
     </script>
 </body>
 </html>
-
-
-
 
