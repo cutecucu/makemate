@@ -421,7 +421,7 @@
 
             // === p5.js 마우스 이벤트 핸들러 ===
 
-            p.mousePressed = () => {
+            p.mousePressed = (event) => {
                 const mx = p.mouseX - tileX; 
                 const my = p.mouseY - tileY; 
 
@@ -528,6 +528,119 @@
                 tileY = (p.windowHeight / 2) - (tileSize / 2);
                 p.redraw(); 
             };
+            
+            // === [신규] 모바일 터치 이벤트 핸들러 ===
+            // 터치 이벤트가 발생하면, 기존의 마우스 이벤트 함수를 호출합니다.
+            
+            p.touchStarted = (event) => {
+                // p.mousePressed(event); // 마우스 이벤트 핸들러 호출
+                // event.preventDefault()를 호출하기 위해, 마우스 핸들러 내용을 여기에 복사합니다.
+                
+                const mx = p.mouseX - tileX; 
+                const my = p.mouseY - tileY; 
+
+                if (drawingState !== 'none') {
+                    isDrawing = true;
+                    if (drawingState === 'left') {
+                        leftCutPoints = [{ x: 0, y: 0 }]; 
+                    } else if (drawingState === 'top') {
+                        topCutPoints = [{ x: 0, y: 0 }]; 
+                    }
+                } else {
+                    // 충돌 판정 로직
+                    let leftCheckWidth = p.max(tileSize / 2, leftPiece.width);
+                    let leftCheckHeight = p.max(tileSize / 2, leftPiece.height);
+                    
+                    if (leftCutPoints.length > 0 && !leftPiece.snapped && p.abs(mx - leftPiece.x) < leftCheckWidth && p.abs(my - leftPiece.y) < leftCheckHeight) { 
+                        draggingPiece = leftPiece;
+                        dragOffsetX = mx - leftPiece.x; dragOffsetY = my - leftPiece.y;
+                    } else { 
+                        let topCheckWidth = p.max(tileSize / 2, topPiece.width);
+                        let topCheckHeight = p.max(tileSize / 2, topPiece.height);
+                        
+                        if (topCutPoints.length > 0 && !topPiece.snapped && p.abs(mx - topPiece.x) < topCheckWidth && p.abs(my - topPiece.y) < topCheckHeight) { 
+                            draggingPiece = topPiece;
+                            dragOffsetX = mx - topPiece.x; dragOffsetY = my - topPiece.y;
+                        }
+                    }
+                }
+                p.redraw();
+
+                return false; // 페이지 스크롤 등 기본 터치 동작 방지
+            };
+
+            p.touchMoved = (event) => {
+                // p.mouseDragged(event); // 마우스 이벤트 핸들러 호출
+                // event.preventDefault()를 호출하기 위해, 마우스 핸들러 내용을 여기에 복사합니다.
+
+                const mx = p.mouseX - tileX;
+                const my = p.mouseY - tileY;
+
+                if (isDrawing) {
+                    if (drawingState === 'left') {
+                        let constrainedX = p.constrain(mx, -tileSize / 2, tileSize / 2); 
+                        let constrainedY = p.constrain(my, 0, tileSize); 
+                        leftCutPoints.push({ x: constrainedX, y: constrainedY });
+                    } else if (drawingState === 'top') {
+                        let constrainedX = p.constrain(mx, 0, tileSize); 
+                        let constrainedY = p.constrain(my, -tileSize / 2, tileSize / 2); 
+                        topCutPoints.push({ x: constrainedX, y: constrainedY });
+                    }
+                } else if (draggingPiece) {
+                    if (draggingPiece === leftPiece) {
+                        draggingPiece.x = mx - dragOffsetX;
+                        draggingPiece.y = my - dragOffsetY;
+                        draggingPiece.y = p.constrain(draggingPiece.y, 0, tileSize - leftPiece.height); 
+                        draggingPiece.x = p.constrain(draggingPiece.x, -tileSize / 2, tileSize); 
+                        if (p.abs(draggingPiece.x - tileSize) < 20) { 
+                            draggingPiece.x = tileSize; draggingPiece.snapped = true;
+                        } else { draggingPiece.snapped = false; }
+                    } else if (draggingPiece === topPiece) {
+                        draggingPiece.x = mx - dragOffsetX;
+                        draggingPiece.y = my - dragOffsetY;
+                        draggingPiece.x = p.constrain(draggingPiece.x, 0, tileSize - topPiece.width);
+                        draggingPiece.y = p.constrain(draggingPiece.y, -tileSize / 2, tileSize); 
+                        if (p.abs(draggingPiece.y - tileSize) < 20) { 
+                            draggingPiece.y = tileSize; draggingPiece.snapped = true;
+                        } else { draggingPiece.snapped = false; }
+                    }
+                }
+                p.redraw();
+
+                return false; // 페이지 스크롤 등 기본 터치 동작 방지
+            };
+            
+            p.touchEnded = (event) => {
+                // p.mouseReleased(event); // 마우스 이벤트 핸들러 호출
+                // event.preventDefault()를 호출하기 위해, 마우스 핸들러 내용을 여기에 복사합니다.
+
+                if (isDrawing) {
+                    if (drawingState === 'left') {
+                        leftCutPoints.push({ x: 0, y: tileSize }); 
+                        leftPiece.points = leftCutPoints;
+                        leftPiece.x = 0; leftPiece.y = 0;
+                        leftPiece.width = p.max(leftCutPoints.map(pt => pt.x)) - p.min(leftCutPoints.map(pt => pt.x));
+                        leftPiece.height = tileSize;
+                    } else if (drawingState === 'top') {
+                        topCutPoints.push({ x: tileSize, y: 0 }); 
+                        topPiece.points = topCutPoints;
+                        topPiece.x = 0; topPiece.y = 0;
+                        topPiece.width = tileSize;
+                        topPiece.height = p.max(topCutPoints.map(pt => pt.y)) - p.min(topCutPoints.map(pt => pt.y));
+                    }
+                    drawingState = 'none';
+                    isDrawing = false;
+                } else if (draggingPiece) {
+                    if (!draggingPiece.snapped) {
+                        draggingPiece.x = 0; draggingPiece.y = 0; 
+                    }
+                    draggingPiece = null;
+                }
+                p.redraw();
+
+                return false; // 페이지 스크롤 등 기본 터치 동작 방지
+            };
+
 
         }; // End of sketch function
 
@@ -586,5 +699,6 @@
     </script>
 </body>
 </html>
+
 
 
