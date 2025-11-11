@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테셀레이션 패턴 생성기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter 폰트 기본 적용 */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* 가로 스크롤 방지 */
+        }
+        
+        /* 그리드 타일 커서 */
+        #grid-container canvas {
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .tool-btn {
+            transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
+        }
+        .tool-btn.selected {
+            border-color: #3B82F6; /* 파란색 테두리 */
+            background-color: #EFF6FF; /* 연한 파란색 배경 */
+        }
+        .tool-btn:not(.selected) {
+            border-color: #D1D5DB; /* 회색 테두리 */
+            background-color: #FFFFFF;
+        }
+        .tool-btn:not(.selected):hover {
+            background-color: #F9FAFB;
+        }
+
+        /* 도구에 따른 캔버스 커서 */
+        #draw-canvas.brush-cursor {
+            cursor: crosshair;
+        }
+        #draw-canvas.paint-cursor {
+            cursor: pointer;
+        }
+        /* 도형(스탬프) 커서 */
+        #draw-canvas.stamp-cursor {
+            cursor: copy;
+        }
+
+        /* 드로잉 캔버스 위치 (z-10) */
+        #draw-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+        /* 격자 및 미리보기 캔버스 (z-20) */
+        #grid-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* 격자/미리보기 위로 그림 그릴 수 있도록 */
+            z-index: 20;
+        }
+        
+        /* 색상 피커를 버튼처럼 보이게 스타일링 */
+        input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 44px; /* tool-btn과 유사한 크기 */
+            height: 44px; /* tool-btn과 유사한 크기 */
+            padding: 0;
+            border: 2px solid #D1D5DB;
+            border-radius: 0.5rem; /* 8px */
+            cursor: pointer;
+            background-color: transparent; /* 배경 투명 */
+        }
+        /* 피커 내부 색상 원 */
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 4px;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%; /* 원형 */
+        }
+        input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: 50%; /* 원형 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto bg-white rounded-lg shadow-xl p-6 md:p-8">
+        
+        <header class="mb-6 flex flex-wrap justify-between items-center gap-4">
+            <!-- 제목 및 설명 -->
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800 text-left">테셀레이션 패턴 생성기</h1>
+                <p class="text-gray-600 text-left mt-2">
+                    왼쪽 타일에 그림을 그리고, 오른쪽 그리드에서 타일을 클릭하여 90도 회전시켜 보세요!
+                </p>
+            </div>
+            <!-- MakeMate 로고 플레이스홀더 (원형) -->
+            <img src="https://placehold.co/80x80/3B82F6/FFFFFF?text=MM&font=inter" 
+                 alt="MakeMate 원형 로고" 
+                 class="w-16 h-16 md:w-20 md:h-20 rounded-full"
+                 onerror="this.src='https://placehold.co/80x80?text=Logo'">
+        </header>
+        
+        <!-- 컨트롤 바 (도구, 색상, 크기, 지우기) -->
+        <section class="bg-gray-50 p-4 rounded-lg border mb-6 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <!-- 도구 -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium text-sm text-gray-700 mr-2">도구:</span>
+                <button id="brush-tool" class="tool-btn p-2 rounded-lg border-2" title="브러시">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                </button>
+                <button id="paint-tool" class="tool-btn p-2 rounded-lg border-2" title="페인트 통">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"></path><path d="m5 2 5 5"></path><path d="M22 12h-4"></path><path d="m14 20 3-3 3 3"></path><path d="M4 18v-4"></path><path d="m16 4-3 3-3-3"></path></svg>
+                </button>
+                <button id="line-tool" class="tool-btn p-2 rounded-lg border-2" title="선">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button id="rect-tool" class="tool-btn p-2 rounded-lg border-2" title="사각형 (도장)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                </button>
+                <button id="circle-tool" class="tool-btn p-2 rounded-lg border-2" title="원 (도장)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                </button>
+                <button id="triangle-tool" class="tool-btn p-2 rounded-lg border-2" title="세모 (도장)">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L2 22 L22 22 Z"></path></svg>
+                </button>
+                <button id="star-tool" class="tool-btn p-2 rounded-lg border-2" title="별 (도장)">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z"></path></svg>
+                </button>
+            </div>
+            
+            <!-- 색상 -->
+            <div class="flex items-center gap-2">
+                 <label for="color-picker" class="font-medium text-sm text-gray-700">색상:</label>
+                 <input type="color" id="color-picker" value="#000000" title="색상 선택">
+            </div>
+
+            <!-- 크기 슬라이더 -->
+            <div class="flex-1 min-w-[200px] flex items-center gap-2">
+                <label id="brush-size-label" for="brush-size" class="font-medium text-sm text-gray-700 whitespace-nowrap">선/브러시 크기:</label>
+                <input type="range" id="brush-size" min="1" max="100" value="5" class="w-full h-8 cursor-pointer">
+                <span id="brush-size-value" class="font-medium text-sm text-gray-700 w-8 text-right">5</span>
+            </div>
+            
+            <!-- 전체 지우기 -->
+            <div class="ml-auto">
+                <button id="clear-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-md transition-colors text-base">
+                    전체 지우기
+                </button>
+            </div>
+        </section>
+
+        <!-- 메인 컨텐츠 (드로잉 + 그리드) -->
+        <!-- 넓은 화면(lg)에서는 4개 유닛으로 나눔: 2(드로잉) | 2(그리드) -->
+        <main class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <!-- 1. 드로잉 (Drawing) -->
+            <section class="flex flex-col gap-6 lg:col-span-2">
+                <!-- "타일 그리기" 타이틀 추가 -->
+                <h2 class="text-xl font-semibold text-gray-700 text-center lg:text-left">타일 그리기</h2>
+                
+                <!-- 캔버스 컨테이너 (격자 포함) -->
+                <!-- 이 컨테이너의 크기를 ResizeObserver가 감지합니다 -->
+                <div id="canvas-container" class="relative w-full aspect-square bg-white border-4 border-blue-300 rounded-lg shadow-inner">
+                    <!-- 그리기 캔버스 (z-10) -->
+                    <canvas id="draw-canvas" class="absolute top-0 left-0"></canvas>
+                    <!-- 격자 및 미리보기 캔버스 (z-20) -->
+                    <canvas id="grid-canvas" class="absolute top-0 left-0 pointer-events-none"></canvas>
+                </div>
+            </section>
+            
+            <!-- 2. 미리보기 (Preview) -->
+            <section class="flex flex-col gap-6 lg:col-span-2">
+                <h2 class="text-xl font-semibold text-gray-700 text-center lg:text-left">패턴 미리보기</h2>
+                <!-- 그리드 컨테이너 -->
+                <div class="w-full aspect-square border-2 border-gray-300 rounded-lg overflow-hidden shadow-inner">
+                    <div id="grid-container" class="grid grid-cols-4 grid-rows-4 h-full bg-white">
+                        <!-- 타일 캔버스가 여기에 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+                 <p class="text-sm text-gray-500 text-center lg:text-left mt-3">
+                    * 그림을 그리는 중에도 패턴이 실시간으로 적용됩니다.
+                </p>
+                <!-- 저장 옵션 -->
+                <div class="bg-gray-50 p-4 rounded-lg border flex flex-col gap-4">
+                    <div>
+                        <label class="mb-2 font-medium text-sm text-gray-600 block">저장 크기 (타일 개수)</label>
+                        <div class="flex gap-4">
+                            <input type="number" id="save-width" value="4" min="1" max="20" class="w-1/2 p-2 border rounded-md text-center" aria-label="저장 가로 개수">
+                            <span class="flex items-center justify-center text-gray-600">x</span>
+                            <input type="number" id="save-height" value="4" min="1" max="20" class="w-1/2 p-2 border rounded-md text-center" aria-label="저장 세로 개수">
+                        </div>
+                    </div>
+                    <button id="save-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-md transition-colors text-lg">
+                        이미지 저장하기
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 1. 변수 및 요소 설정 ---
+            const drawCanvas = document.getElementById('draw-canvas');
+            const gridCanvas = document.getElementById('grid-canvas'); // 격자 + 미리보기용
+            const gridContainer = document.getElementById('grid-container');
+            const canvasContainer = document.getElementById('canvas-container'); // 캔버스 부모
+            
+            const colorPicker = document.getElementById('color-picker');
+            
+            // 컨트롤 요소
+            const brushToolBtn = document.getElementById('brush-tool');
+            const paintToolBtn = document.getElementById('paint-tool');
+            const lineToolBtn = document.getElementById('line-tool');
+            const rectToolBtn = document.getElementById('rect-tool');
+            const circleToolBtn = document.getElementById('circle-tool');
+            const triangleToolBtn = document.getElementById('triangle-tool');
+            const starToolBtn = document.getElementById('star-tool');
+            const toolButtons = [brushToolBtn, paintToolBtn, lineToolBtn, rectToolBtn, circleToolBtn, triangleToolBtn, starToolBtn];
+
+            const brushSizeSlider = document.getElementById('brush-size');
+            const brushSizeLabel = document.getElementById('brush-size-label'); // 슬라이더 라벨
+            const brushSizeValue = document.getElementById('brush-size-value');
+            const clearBtn = document.getElementById('clear-btn');
+            const saveBtn = document.getElementById('save-btn');
+            const saveWidthInput = document.getElementById('save-width');
+            const saveHeightInput = document.getElementById('save-height');
+            
+            // 필수 요소 확인
+            if (!drawCanvas || !gridCanvas || !gridContainer || !canvasContainer || !colorPicker) {
+                console.error("Initialization failed: One or more essential elements are missing.");
+                return;
+            }
+            
+            const drawCtx = drawCanvas.getContext('2d');
+            const gridCtx = gridCanvas.getContext('2d'); // 격자 + 미리보기 캔버스
+
+            // 그리기 상태
+            let isDrawing = false;
+            let currentTool = 'brush'; 
+            let currentColor = colorPicker.value;
+            let currentBrushSize = brushSizeSlider.value;
+            let currentShapeSize = 50; // 도형 크기 (새로 추가)
+            let lastX = 0, lastY = 0; // 브러시/선용
+            let startX = 0, startY = 0; // 선 드래그용
+            let tempCanvasData = null; // 선 미리보기용
+            
+            const GRID_SIZE = 4;
+            let TILE_SIZE = 0;
+            let gridRotations = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(0));
+            let gridTiles = [];
+            let lastGridUpdateTime = 0;
+            const GRID_UPDATE_THROTTLE = 50;
+
+            
+            // --- 2. 캔버스 크기 조정 (ResizeObserver) ---
+            function resizeAndSetupCanvases(entries) {
+                if (!entries || entries.length === 0) return;
+                
+                const entry = entries[0];
+                const { width } = entry.contentRect;
+                const canvasSize = Math.floor(width); // 정수 픽셀
+
+                // 0이거나 크기 변경이 없으면 중단
+                if (canvasSize === 0 || canvasSize === drawCanvas.width) {
+                    return;
+                }
+                
+                // 1. 드로잉 캔버스 크기 설정
+                drawCanvas.width = canvasSize;
+                drawCanvas.height = canvasSize;
+                
+                // 2. 격자 캔버스 크기 설정
+                gridCanvas.width = canvasSize;
+                gridCanvas.height = canvasSize;
+
+                // 3. 타일 크기 재설정 (드로잉 캔버스의 절반 해상도)
+                TILE_SIZE = Math.floor(canvasSize / 2);
+
+                // 4. 모든 그리드 타일 캔버스 해상도 재설정
+                gridTiles.forEach(tile => {
+                    tile.width = TILE_SIZE;
+                    tile.height = TILE_SIZE;
+                });
+                
+                // 5. 드로잉 캔버스 설정 다시 적용 (초기화)
+                setupDrawCanvas();
+                
+                // 6. 격자 다시 그리기
+                drawGridLines();
+
+                // 7. 그리드 미리보기 업데이트
+                updateGrid();
+            }
+
+            // --- 3. 초기화 함수 ---
+            function initialize() {
+                // 슬라이더 최대값 캔버스 크기에 맞게 조절 (예시)
+                brushSizeSlider.max = 100; // 100px로 고정 (혹은 캔버스 크기 기반)
+                
+                createGrid();
+                addEventListeners();
+                selectTool('brush'); // 초기 도구 설정
+
+                const resizeObserver = new ResizeObserver(resizeAndSetupCanvases);
+                resizeObserver.observe(canvasContainer);
+            }
+
+            // 드로잉 캔버스 초기 설정 (배경색)
+            function setupDrawCanvas() {
+                drawCtx.fillStyle = 'white';
+                drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+                drawCtx.lineCap = 'round';
+                drawCtx.lineJoin = 'round';
+            }
+            
+            // 10x10 격자 그리기
+            function drawGridLines() {
+                // gridCtx를 사용 (격자 + 미리보기 캔버스)
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                gridCtx.strokeStyle = '#E5E7EB'; // 연한 회색
+                gridCtx.lineWidth = 1;
+
+                const step = gridCanvas.width / 10;
+
+                for (let i = 1; i < 10; i++) {
+                    // 수직선
+                    gridCtx.beginPath();
+                    gridCtx.moveTo(step * i, 0);
+                    gridCtx.lineTo(step * i, gridCanvas.height);
+                    gridCtx.stroke();
+                    
+                    // 수평선
+                    gridCtx.beginPath();
+                    gridCtx.moveTo(0, step * i);
+                    gridCtx.lineTo(gridCanvas.width, step * i);
+                    gridCtx.stroke();
+                }
+            }
+            
+            // 도구 선택 처리 (슬라이더 라벨 변경)
+            function selectTool(tool) {
+                currentTool = tool;
+                
+                toolButtons.forEach(btn => btn.classList.remove('selected'));
+                drawCanvas.classList.remove('paint-cursor', 'brush-cursor', 'stamp-cursor');
+                clearShapePreview(); // 도구 변경 시 미리보기 지우기
+
+                if (tool === 'brush') {
+                    brushToolBtn.classList.add('selected');
+                    drawCanvas.classList.add('brush-cursor');
+                    brushSizeLabel.childNodes[0].nodeValue = '선/브러시 크기 (px):'; // 라벨 텍스트 변경
+                    brushSizeSlider.value = currentBrushSize;
+                    brushSizeValue.textContent = currentBrushSize + 'px';
+                } else if (tool === 'paint') {
+                    paintToolBtn.classList.add('selected');
+                    drawCanvas.classList.add('paint-cursor');
+                } else if (tool === 'line') {
+                    lineToolBtn.classList.add('selected');
+                    drawCanvas.classList.add('brush-cursor');
+                    brushSizeLabel.childNodes[0].nodeValue = '선 두께 (px):'; // 라벨 텍스트 변경
+                    brushSizeSlider.value = currentBrushSize;
+                    brushSizeValue.textContent = currentBrushSize + 'px';
+                } else if (['rect', 'circle', 'triangle', 'star'].includes(tool)) {
+                    if (tool === 'rect') rectToolBtn.classList.add('selected');
+                    if (tool === 'circle') circleToolBtn.classList.add('selected');
+                    if (tool === 'triangle') triangleToolBtn.classList.add('selected');
+                    if (tool === 'star') starToolBtn.classList.add('selected');
+                    
+                    drawCanvas.classList.add('stamp-cursor'); // 도장 커서
+                    brushSizeLabel.childNodes[0].nodeValue = '도형 크기 (%):'; // 라벨 텍스트 변경
+                    brushSizeSlider.value = currentShapeSize;
+                    brushSizeValue.textContent = currentShapeSize + '%';
+                }
+            }
+
+            // 그리드 타일 생성
+            function createGrid() {
+                gridContainer.innerHTML = ''; // 기존 그리드 초기화
+                gridTiles = [];
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        const tileCanvas = document.createElement('canvas');
+                        // TILE_SIZE는 아직 0일 수 있으므로, 크기 설정은 observer가 함
+                        
+                        // 클릭 이벤트 (타일 회전)
+                        tileCanvas.addEventListener('click', () => {
+                            rotateTile(r, c);
+                        });
+                        
+                        gridContainer.appendChild(tileCanvas);
+                        gridTiles.push(tileCanvas);
+                    }
+                }
+            }
+
+            // --- 4. 이벤트 리스너 ---
+            function addEventListeners() {
+                // 도구
+                brushToolBtn.addEventListener('click', () => selectTool('brush'));
+                paintToolBtn.addEventListener('click', () => selectTool('paint'));
+                lineToolBtn.addEventListener('click', () => selectTool('line'));
+                rectToolBtn.addEventListener('click', () => selectTool('rect'));
+                circleToolBtn.addEventListener('click', () => selectTool('circle'));
+                triangleToolBtn.addEventListener('click', () => selectTool('triangle'));
+                starToolBtn.addEventListener('click', () => selectTool('star'));
+                
+                // 색상
+                colorPicker.addEventListener('input', (e) => {
+                    currentColor = e.target.value;
+                });
+
+                // 컨트롤 (슬라이더 로직 변경)
+                brushSizeSlider.addEventListener('input', (e) => {
+                    const size = e.target.value;
+                    if (currentTool === 'brush' || currentTool === 'line') {
+                        currentBrushSize = size;
+                        brushSizeValue.textContent = size + 'px';
+                    } else if (['rect', 'circle', 'triangle', 'star'].includes(currentTool)) {
+                        currentShapeSize = size;
+                        brushSizeValue.textContent = size + '%';
+                    }
+                    // brushSizeValue.textContent = size; // 이전 코드
+                    // 슬라이더 조절 시 미리보기 즉시 업데이트 (캔버스 위에 있다면)
+                    drawShapePreview(); 
+                });
+                
+                clearBtn.addEventListener('click', clearDrawing);
+                saveBtn.addEventListener('click', savePatternImage);
+
+                // 드로잉 이벤트
+                drawCanvas.addEventListener('mousedown', startDrawing);
+                drawCanvas.addEventListener('mousemove', draw);
+                drawCanvas.addEventListener('mouseup', stopDrawing);
+                // 캔버스 밖으로 나갈 때 미리보기 지우기
+                drawCanvas.addEventListener('mouseleave', (e) => { // 'e' 추가
+                    stopDrawing(e); // 'e' 전달
+                    clearShapePreview(); // 도형 미리보기 지우기
+                }); 
+                
+                drawCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+                drawCanvas.addEventListener('touchmove', draw, { passive: false });
+                drawCanvas.addEventListener('touchend', stopDrawing);
+            }
+            
+            // --- 5. 드로잉 함수 (도장/스탬프 기능으로 수정) ---
+            
+            function startDrawing(e) {
+                e.preventDefault();
+                const { x, y } = getCoords(e);
+                
+                if (currentTool === 'brush' || currentTool === 'line') {
+                    isDrawing = true;
+                    [startX, lastX] = [x, x];
+                    [startY, lastY] = [y, y];
+                    
+                    if(currentTool === 'brush') {
+                        drawCtx.beginPath();
+                        drawCtx.moveTo(lastX, lastY);
+                    } else if (currentTool === 'line') {
+                        tempCanvasData = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+                    }
+                    clearShapePreview(); // 그리기 시작하면 미리보기 지움
+                } else if (currentTool === 'paint') {
+                    isDrawing = false; 
+                    floodFill(Math.floor(x), Math.floor(y), currentColor);
+                    updateGrid();
+                } else if (['rect', 'circle', 'triangle', 'star'].includes(currentTool)) {
+                    isDrawing = false; // 스탬프는 드래그 아님
+                    stampShape(x, y); // 클릭 즉시 도장 찍기
+                    updateGrid();
+                }
+            }
+
+            function draw(e) {
+                if (!isDrawing) {
+                    // 그리기 중이 아닐 때 = 마우스가 그냥 움직일 때
+                    drawShapePreview(e); // 도형 미리보기 그리기
+                    return;
+                }
+                
+                // 그리기 중일 때 ('brush' 또는 'line')
+                e.preventDefault();
+                const { x, y } = getCoords(e);
+
+                if (currentTool === 'brush') {
+                    drawCtx.strokeStyle = currentColor;
+                    drawCtx.lineWidth = currentBrushSize;
+                    drawCtx.lineTo(x, y);
+                    drawCtx.stroke();
+                    [lastX, lastY] = [x, y];
+                } else if (currentTool === 'line') {
+                    if (!tempCanvasData) return;
+                    drawCtx.putImageData(tempCanvasData, 0, 0); // 원본 복원
+                    drawCtx.strokeStyle = currentColor;
+                    drawCtx.lineWidth = currentBrushSize;
+                    drawCtx.beginPath();
+                    drawCtx.moveTo(startX, startY);
+                    drawCtx.lineTo(x, y);
+                    drawCtx.stroke(); // 미리보기
+                }
+
+                // 실시간 그리드 업데이트 (쓰로틀링)
+                const now = Date.now();
+                if (now - lastGridUpdateTime > GRID_UPDATE_THROTTLE) {
+                    updateGrid();
+                    lastGridUpdateTime = now;
+                }
+            }
+
+            function stopDrawing(e) {
+                if (!isDrawing) return;
+                
+                const toolWhenStarted = currentTool;
+                isDrawing = false;
+                
+                if (toolWhenStarted === 'brush') {
+                    drawCtx.beginPath(); // 경로 종료
+                } else if (toolWhenStarted === 'line') {
+                    if (!tempCanvasData) return;
+                    const { x, y } = getCoords(e, e.type.includes('touch'));
+                    drawCtx.putImageData(tempCanvasData, 0, 0); // 원본 복원
+                    
+                    drawCtx.strokeStyle = currentColor;
+                    drawCtx.lineWidth = currentBrushSize;
+                    drawCtx.beginPath();
+                    drawCtx.moveTo(startX, startY);
+                    drawCtx.lineTo(x, y);
+                    drawCtx.stroke(); // 최종 선 그리기
+                    tempCanvasData = null;
+                }
+                
+                updateGrid(); // 최종 업데이트
+            }
+            
+            function clearDrawing() {
+                // 1. 드로잉 캔버스 지우기
+                drawCtx.fillStyle = 'white';
+                drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+                
+                // 2. 모든 타일 회전 상태 초기화
+                gridRotations = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(0));
+                
+                // 3. 그리드도 업데이트
+                updateGrid();
+            }
+
+            function getCoords(e, isTouchEnd = false) {
+                const rect = drawCanvas.getBoundingClientRect();
+                let clientX, clientY;
+
+                if (isTouchEnd && e.changedTouches && e.changedTouches.length > 0) {
+                    clientX = e.changedTouches[0].clientX;
+                    clientY = e.changedTouches[0].clientY;
+                } else if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else if (e.clientX !== undefined) {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                } else {
+                    // 이벤트 좌표를 찾을 수 없는 경우 (예: mouseleave)
+                    // 미리보기용으로 좌표를 저장해 둔 lastX, lastY 사용
+                    return { x: lastX, y: lastY }; 
+                }
+                
+                const scaleX = drawCanvas.width / rect.width;
+                const scaleY = drawCanvas.height / rect.height;
+
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
+                
+                // 미리보기용 좌표 저장
+                lastX = x;
+                lastY = y;
+
+                return { x, y };
+            }
+            
+            // --- 5b. 도장(스탬프) 및 도형 그리기 헬퍼 ---
+            
+            // 새 함수: 도장 찍기 (drawCtx에 그리기)
+            function stampShape(x, y) {
+                drawCtx.fillStyle = currentColor;
+                drawCtx.beginPath();
+                // const size = parseInt(currentShapeSize, 10); // 이전 코드
+                const sizePercentage = parseInt(currentShapeSize, 10);
+                const size = drawCanvas.width * (sizePercentage / 100); // 캔버스 너비 대비 % 크기
+
+                if (currentTool === 'rect') {
+                    drawCtx.rect(x - size / 2, y - size / 2, size, size);
+                } else if (currentTool === 'circle') {
+                    drawCtx.arc(x, y, size / 2, 0, Math.PI * 2); // size가 지름
+                } else if (currentTool === 'triangle') {
+                    drawTriangle(drawCtx, x, y, size);
+                } else if (currentTool === 'star') {
+                    drawStar(drawCtx, x, y, 5, size / 2, size / 4); // size/2가 외경
+                }
+                drawCtx.fill();
+            }
+            
+            // 새 함수: 도형 미리보기 (gridCtx에 그리기)
+            function drawShapePreview(e) {
+                // 도형 도구가 아니면 미리보기 안 함
+                if (!['rect', 'circle', 'triangle', 'star'].includes(currentTool)) {
+                    clearShapePreview(); // 혹시 남아있을 미리보기 지우기
+                    return;
+                }
+                
+                // 좌표 가져오기 (e가 없으면(슬라이더 조절) 마지막 좌표 사용)
+                const { x, y } = e ? getCoords(e) : { x: lastX, y: lastY };
+                
+                // 격자 캔버스(gridCtx) 지우고 격자 다시 그리기
+                drawGridLines();
+                
+                // 미리보기 스타일 설정
+                gridCtx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // 반투명 검정
+                gridCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                gridCtx.lineWidth = 2;
+                gridCtx.setLineDash([5, 5]); // 점선
+                gridCtx.beginPath();
+                
+                // const size = parseInt(currentShapeSize, 10); // 이전 코드
+                const sizePercentage = parseInt(currentShapeSize, 10);
+                const size = drawCanvas.width * (sizePercentage / 100); // 캔버스 너비 대비 % 크기
+
+                if (currentTool === 'rect') {
+                    gridCtx.rect(x - size / 2, y - size / 2, size, size);
+                } else if (currentTool === 'circle') {
+                    gridCtx.arc(x, y, size / 2, 0, Math.PI * 2);
+                } else if (currentTool === 'triangle') {
+                    drawTriangle(gridCtx, x, y, size);
+                } else if (currentTool === 'star') {
+                    drawStar(gridCtx, x, y, 5, size / 2, size / 4);
+                }
+                
+                gridCtx.fill();
+                gridCtx.stroke();
+                gridCtx.setLineDash([]); // 점선 해제
+            }
+
+            // 새 함수: 도형 미리보기 지우기 (격자만 다시 그리기)
+            function clearShapePreview() {
+                drawGridLines();
+            }
+            
+            // المثلث (세모) 그리기 (컨텍스트, 중심점, 크기 기준)
+            function drawTriangle(ctx, cx, cy, size) {
+                // 꼭짓점을 위로 하는 이등변 삼각형
+                ctx.moveTo(cx, cy - size / 2); // 위 꼭짓점
+                ctx.lineTo(cx - size / 2, cy + size / 2); // 왼쪽 아래
+                ctx.lineTo(cx + size / 2, cy + size / 2); // 오른쪽 아래
+                ctx.closePath();
+            }
+
+            // 별 그리기 (컨텍스트, 중심점, 뾰족함, 외경, 내경)
+            function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+                let rot = Math.PI / 2 * 3;
+                let x = cx;
+                let y = cy;
+                let step = Math.PI / spikes;
+
+                ctx.moveTo(cx, cy - outerRadius);
+                for (let i = 0; i < spikes; i++) {
+                    x = cx + Math.cos(rot) * outerRadius;
+                    y = cy + Math.sin(rot) * outerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+
+                    x = cx + Math.cos(rot) * innerRadius;
+                    y = cy + Math.sin(rot) * innerRadius;
+                    ctx.lineTo(x, y);
+                    rot += step;
+                }
+                ctx.lineTo(cx, cy - outerRadius);
+                ctx.closePath();
+            }
+
+            // --- 6. 페인트 채우기 함수 ---
+            function hexToRgba(hex) {
+                let r = 0, g = 0, b = 0, a = 255;
+                if (hex.length == 4) { // #RGB
+                    r = parseInt(hex[1] + hex[1], 16);
+                    g = parseInt(hex[2] + hex[2], 16);
+                    b = parseInt(hex[3] + hex[3], 16);
+                } else if (hex.length == 7) { // #RRGGBB
+                    r = parseInt(hex[1] + hex[2], 16);
+                    g = parseInt(hex[3] + hex[4], 16);
+                    b = parseInt(hex[5] + hex[6], 16);
+                }
+                return [r, g, b, a];
+            }
+            
+            function getPixelIndex(x, y, width) {
+                return (y * width + x) * 4;
+            }
+            
+            function colorMatch(c1, c2, tolerance = 16) {
+                return Math.abs(c1[0] - c2[0]) <= tolerance &&
+                       Math.abs(c1[1] - c2[1]) <= tolerance &&
+                       Math.abs(c1[2] - c2[2]) <= tolerance &&
+                       Math.abs(c1[3] - c2[3]) <= tolerance;
+            }
+
+            function floodFill(startX, startY, hexFillColor) {
+                if (drawCanvas.width === 0 || drawCanvas.height === 0) return;
+                
+                const w = drawCanvas.width;
+                const h = drawCanvas.height;
+                let imageData;
+                try {
+                     imageData = drawCtx.getImageData(0, 0, w, h);
+                } catch (e) {
+                    console.error("getImageData failed:", e);
+                    return; // 캔버스 데이터 읽기 실패
+                }
+                
+                const data = imageData.data;
+                const fillColorRgba = hexToRgba(hexFillColor);
+                
+                const startIdx = getPixelIndex(startX, startY, w);
+                const targetColorRgba = [data[startIdx], data[startIdx+1], data[startIdx+2], data[startIdx+3]];
+
+                if (colorMatch(targetColorRgba, fillColorRgba, 0)) {
+                    return;
+                }
+
+                const queue = [[startX, startY]];
+                const visited = new Set();
+                visited.add(`${startX},${startY}`);
+
+                while (queue.length > 0) {
+                    const [x, y] = queue.shift();
+                    
+                    const currentIdx = getPixelIndex(x, y, w);
+                    data[currentIdx] = fillColorRgba[0];
+                    data[currentIdx+1] = fillColorRgba[1];
+                    data[currentIdx+2] = fillColorRgba[2];
+                    data[currentIdx+3] = fillColorRgba[3];
+                    
+                    const neighbors = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+
+                    for (const [nx, ny] of neighbors) {
+                        const key = `${nx},${ny}`;
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h && !visited.has(key)) {
+                            visited.add(key);
+                            
+                            const neighborIdx = getPixelIndex(nx, ny, w);
+                            const neighborColorRgba = [
+                                data[neighborIdx], data[neighborIdx+1], data[neighborIdx+2], data[neighborIdx+3]
+                            ];
+                            
+                            if (colorMatch(neighborColorRgba, targetColorRgba)) {
+                                queue.push([nx, ny]);
+                            }
+                        }
+                    }
+                }
+                
+                drawCtx.putImageData(imageData, 0, 0);
+            }
+
+
+            // --- 7. 그리드 업데이트 및 회전 ---
+            function rotateTile(r, c) {
+                gridRotations[r][c] = (gridRotations[r][c] + 90) % 360;
+                drawSingleTile(r, c);
+            }
+
+            function updateGrid() {
+                if (TILE_SIZE === 0) return;
+                
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        drawSingleTile(r, c);
+                    }
+                }
+            }
+
+            function drawSingleTile(r, c) {
+                const index = r * GRID_SIZE + c;
+                const tileCanvas = gridTiles[index];
+                if (!tileCanvas) return;
+                
+                const ctx = tileCanvas.getContext('2d');
+                const rotation = gridRotations[r][c];
+                
+                const w = tileCanvas.width;
+                const h = tileCanvas.height;
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.save();
+                
+                ctx.translate(w / 2, h / 2);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.translate(-w / 2, -h / 2);
+                
+                ctx.drawImage(drawCanvas, 0, 0, w, h);
+                
+                ctx.restore();
+            }
+
+            // --- 8. 이미지 저장 ---
+            function savePatternImage() {
+                if (TILE_SIZE === 0) {
+                    console.error("Tile size not set, cannot save image.");
+                    return;
+                }
+                
+                const tileCountW = parseInt(saveWidthInput.value, 10) || GRID_SIZE;
+                const tileCountH = parseInt(saveHeightInput.value, 10) || GRID_SIZE;
+                
+                const newCanvas = document.createElement('canvas');
+                const finalWidth = TILE_SIZE * tileCountW; 
+                const finalHeight = TILE_SIZE * tileCountH;
+                newCanvas.width = finalWidth;
+                newCanvas.height = finalHeight;
+                
+                const newCtx = newCanvas.getContext('2d');
+                
+                newCtx.fillStyle = 'white';
+                newCtx.fillRect(0, 0, finalWidth, finalHeight);
+
+                for (let r = 0; r < tileCountH; r++) {
+                    for (let c = 0; c < tileCountW; c++) {
+                        const gridR = r % GRID_SIZE;
+                        const gridC = c % GRID_SIZE;
+                        
+                        const tileCanvas = gridTiles[gridR * GRID_SIZE + gridC];
+                        
+                        if(tileCanvas) {
+                            newCtx.drawImage(
+                                tileCanvas, 
+                                c * TILE_SIZE, // x 위치
+                                r * TILE_SIZE, // y 위치
+                                TILE_SIZE,     // 너비
+                                TILE_SIZE      // 높이
+                            );
+                        }
+                    }
+                }
+
+                const link = document.createElement('a');
+                link.download = 'tessellation-pattern.png';
+                link.href = newCanvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            // --- 9. 앱 시작 ---
+            initialize();
+        });
+    </script>
+</body>
+</html>
