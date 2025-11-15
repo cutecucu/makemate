@@ -22,49 +22,49 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // 4. 필요한 HTML 요소(태그) 가져오기
-const gameGallery = document.getElementById('game-gallery');
+const gamePostList = document.getElementById('game-post-list');
 
 // 5. Firestore에서 게임 데이터 가져와서 화면에 그리기 (★수정됨★)
 db.collection("students").orderBy("name").onSnapshot((snapshot) => {
     
-    console.log("데이터를 성공적으로 가져왔습니다!");
-    gameGallery.innerHTML = ''; // 갤러리를 일단 비웁니다. (새로 그리려고)
+    console.log("iFrame 버전 데이터를 성공적으로 가져왔습니다!");
+    gamePostList.innerHTML = ''; // 목록을 비웁니다.
     
     snapshot.forEach((doc) => {
-        // doc.data()는 학생 1명의 정보 객체입니다.
+        // doc.data() 예: 
+        // { name: "김철수", gameTitle: "탈출게임", gameStory: "...", gameLink: "..." }
         const student = doc.data();
 
-        // --- ★수정★ 썸네일 URL을 직접 사용 ---
-        // 1. DB에 썸네일 URL이 저장되어 있으면 그것을 사용합니다.
-        // 2. 없으면, 기본 이미지(PcaXf5R.png)를 사용합니다.
-        let thumbnailUrl = student.thumbnailUrl || "https://i.imgur.com/PcaXf5R.png";
+        // <div> 태그로 '게시물'을 만듭니다.
+        const post = document.createElement('div');
+        post.className = "game-post"; // css 스타일 적용
         
-        // 만약 thumbnailUrl이 비어있는 문자열("")이라면, 다시 기본 이미지로 설정
-        if (thumbnailUrl.trim() === "") {
-             thumbnailUrl = "https://i.imgur.com/PcaXf5R.png";
-        }
-        // --- (MakeCode 링크로 썸네일 만들던 복잡한 로직 전부 삭제) ---
-
-        // <a> 태그(클릭 가능한 링크 카드)를 만듭니다.
-        const card = document.createElement('a');
-        
+        // ★수정★: 게시물 안의 내용을 HTML로 채웁니다.
+        // gameLink가 비어있으면 iFrame 영역을 만들지 않습니다.
+        let iframeHtml = '';
         if (student.gameLink) {
-             card.href = student.gameLink;
-             card.target = "_blank"; // 새 탭에서 열기
+            iframeHtml = `
+                <div class="iframe-container">
+                    <iframe 
+                        src="${student.gameLink}" 
+                        allowfullscreen="allowfullscreen" 
+                        sandbox="allow-popups allow-forms allow-scripts allow-same-origin" 
+                        frameborder="0">
+                    </iframe>
+                </div>
+            `;
         }
-       
-        card.className = "game-card"; // css 스타일 적용
 
-        // 카드 안의 내용을 HTML로 채웁니다.
-        card.innerHTML = `
-            <img src="${thumbnailUrl}" alt="${student.gameTitle || '게임'}">
-            <div class="card-content">
-                <h3>${student.gameTitle || "아직 게임 없음"}</h3>
-                <p>${student.name}</p>
+        post.innerHTML = `
+            ${iframeHtml}
+            <div class="post-content">
+                <h2>${student.gameTitle || "제목 없음"}</h2>
+                <p class="author">만든 사람: ${student.name}</p>
+                <p class="story">${student.gameStory || "게임 스토리가 아직 없습니다."}</p>
             </div>
         `;
         
-        // 완성된 카드를 갤러리에 추가합니다.
-        gameGallery.appendChild(card);
+        // 완성된 게시물을 목록에 추가합니다.
+        gamePostList.appendChild(post);
     });
 });
