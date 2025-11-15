@@ -1,12 +1,12 @@
 /* 기본 설정 */
 body {
     font-family: 'Arial', sans-serif;
-    background-color: #f0f2f5; /* 약간 더 어두운 배경 */
+    background-color: #f0f2f5;
     margin: 0;
     padding: 0;
 }
 
-/* 헤더 스타일 (이전과 거의 동일) */
+/* 헤더 스타일 (이전과 동일) */
 header {
     text-align: center;
     padding: 25px;
@@ -24,31 +24,41 @@ header p {
     margin-top: 5px;
 }
 
-/* ★수정★: 게임 게시물 목록 (메인 영역) */
+/* ★수정★: 게임 게시물 목록 (그리드 컨테이너) */
 #game-post-list {
-    max-width: 800px; /* 블로그처럼 중앙에 좁게 */
-    margin: 30px auto; /* 위아래, 좌우 중앙 */
-    padding: 0 15px;
+    display: grid;
+    
+    /* (중요!)
+      'repeat(3, 1fr)' (무조건 3개) 대신 'auto-fill'을 사용하면,
+      - PC에서는 3~4개
+      - 태블릿에서는 2개
+      - 스마트폰에서는 1개
+      처럼 자동으로 예쁘게 정렬됩니다!
+      'minmax(300px, 1fr)'는 "카드 1개의 최소 너비는 300px"라는 뜻입니다.
+    */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    
+    gap: 25px; /* 카드와 카드 사이의 간격 */
+    
+    max-width: 1200px; /* 전체 최대 너비 (넓게) */
+    margin: 30px auto; /* 중앙 정렬 */
+    padding: 0 20px; /* 좌우 여백 */
 }
 
-/* ★수정★: 개별 게임 게시물 카드 */
+/* ★수정★: 개별 게임 게시물 (이제 '카드'가 됨) */
 .game-post {
     background-color: #ffffff;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    margin-bottom: 30px;
+    /* (margin-bottom 삭제 - 'gap'이 대신함) */
     overflow: hidden; /* iFrame이 둥근 모서리를 지키도록 */
 }
 
-/* ★수정★: 게임 iFrame을 감싸는 컨테이너 */
+/* iFrame 컨테이너 (★수정 없음★) - 이 비율은 그대로 유지 */
 .iframe-container {
     position: relative;
     width: 100%;
-    /* MakeCode iFrame의 표준 비율 (높이 / 너비)
-       580 / 493 = 약 1.176
-       padding-bottom에 117.6%를 주면 비율이 완벽하게 맞습니다.
-    */
-    padding-bottom: 117.6%;
+    padding-bottom: 117.6%; /* MakeCode iFrame 표준 비율 */
     height: 0;
     overflow: hidden;
     background-color: #222; /* 로딩 중 검은색 배경 */
@@ -60,31 +70,34 @@ header p {
     left: 0;
     width: 100%;
     height: 100%;
-    border: none; /* iFrame 테두리 제거 */
+    border: none;
 }
 
-/* 게임 게시물 내용 (제목, 스토리) */
+/* 게임 게시물 내용 (★수정됨 - 카드에 맞게 작게★) */
 .post-content {
-    padding: 20px 25px;
+    padding: 15px; /* 패딩 줄이기 */
 }
 .post-content h2 {
-    margin: 0 0 10px 0;
-    font-size: 1.8em;
-    color: #333;
+    margin: 0 0 5px 0;
+    font-size: 1.3em; /* 폰트 크기 줄이기 */
+    /* 제목이 길면 ... 처리 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .post-content .author {
-    font-size: 1.1em;
+    font-size: 0.9em; /* 폰트 크기 줄이기 */
     font-weight: bold;
     color: #0056b3;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 .post-content .story {
-    font-size: 1.05em;
-    line-height: 1.6; /* 줄 간격 */
+    font-size: 0.9em; /* 폰트 크기 줄이기 */
+    line-height: 1.5; 
     color: #444;
-    /* 스토리가 너무 길면 ... 처리 (필요시 주석 해제)
-    max-height: 100px;
+    
+    /* (추가) 스토리가 너무 길면 ...으로 자르기 */
+    max-height: 60px; /* 약 3~4줄 높이 제한 */
     overflow: hidden;
     text-overflow: ellipsis; 
-    */
 }
