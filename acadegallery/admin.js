@@ -21,7 +21,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// 3. HTML 요소(태그) 가져오기 (이전과 동일)
+// 3. HTML 요소(태그) 가져오기
 const loginSection = document.getElementById('login-section');
 const adminPanel = document.getElementById('admin-panel');
 const loginBtn = document.getElementById('login-btn');
@@ -31,17 +31,17 @@ const newStudentNameInput = document.getElementById('new-student-name');
 const addStudentBtn = document.getElementById('add-student-btn');
 const studentListDiv = document.getElementById('student-list');
 
-// 4. 로그인 기능 (이전과 동일)
+// 4. 로그인 기능
 loginBtn.onclick = () => {
     auth.signInWithPopup(googleProvider);
 };
 
-// 5. 로그아웃 기능 (이전과 동일)
+// 5. 로그아웃 기능
 logoutBtn.onclick = () => {
     auth.signOut();
 };
 
-// 6. 인증 상태 감지 (이전과 동일)
+// 6. 인증 상태 감지
 auth.onAuthStateChanged((user) => {
     if (user) {
         loginSection.style.display = 'none';
@@ -55,7 +55,7 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// 7. 새 학생 추가 기능 (★수정됨★)
+// 7. 새 학생 추가 기능
 addStudentBtn.onclick = () => {
     const name = newStudentNameInput.value.trim();
     if (name === "") {
@@ -67,7 +67,7 @@ addStudentBtn.onclick = () => {
         name: name,
         gameTitle: "",
         gameLink: "",
-        thumbnailUrl: "" // <-- ★수정★ 썸네일 URL 필드 추가
+        thumbnailUrl: "" // 썸네일 URL 필드 추가
     })
     .then(() => {
         console.log("학생 추가 성공!");
@@ -79,7 +79,7 @@ addStudentBtn.onclick = () => {
     });
 };
 
-// 8. 학생 목록 불러오고 관리 카드 만드는 기능 (★수정됨★)
+// 8. 학생 목록 불러오고 관리 카드 만드는 기능
 function loadStudents() {
     db.collection("students").orderBy("name").onSnapshot((snapshot) => {
         studentListDiv.innerHTML = '';
@@ -87,10 +87,10 @@ function loadStudents() {
             const student = doc.data();
             const docId = doc.id;
 
+            // 'card' 변수는 이 forEach 문 안에서만 유효합니다.
             const card = document.createElement('div');
             card.className = 'student-card';
             
-            // --- ★수정★ 썸네일 URL 입력 칸 추가 ---
             card.innerHTML = `
                 <h3>${student.name}</h3>
                 
@@ -117,30 +117,36 @@ function loadStudents() {
             studentListDiv.appendChild(card);
         });
 
-        // 9. '저장' 버튼 기능 연결 (★수정됨★)
+        // 9. '저장' 버튼 기능 연결 (★버그 수정★)
         document.querySelectorAll('.btn-save').forEach(button => {
             button.onclick = (e) => {
                 const id = e.target.dataset.id;
                 const newTitle = document.getElementById(`title-${id}`).value;
                 const newLink = document.getElementById(`link-${id}`).value;
-                const newThumb = document.getElementById(`thumb-${id}`).value; // <-- ★수정★ 썸네일 입력값 읽기
+                const newThumb = document.getElementById(`thumb-${id}`).value;
 
-                // Firestore 'students' 컬렉션에서 'id'에 해당하는 문서 업데이트
+                // ★수정★: 'e.target'(클릭된 버튼)을 기준으로 부모(card)를 찾음
+                const studentCard = e.target.closest('.student-card');
+                const studentName = studentCard.querySelector('h3').textContent;
+
                 db.collection("students").doc(id).update({
                     gameTitle: newTitle,
                     gameLink: newLink,
-                    thumbnailUrl: newThumb // <-- ★수정★ 썸네일 URL 저장
+                    thumbnailUrl: newThumb
                 })
-                .then(() => alert(`'${card.querySelector('h3').textContent}' 학생 정보 저장 완료!`))
+                .then(() => alert(`'${studentName}' 학생 정보 저장 완료!`)) // ★수정★
                 .catch((error) => alert("저장 실패: " + error.message));
             };
         });
 
-        // 10. '삭제' 버튼 기능 연결 (이전과 동일)
+        // 10. '삭제' 버튼 기능 연결 (★버그 수정★)
         document.querySelectorAll('.btn-delete').forEach(button => {
             button.onclick = (e) => {
                 const id = e.target.dataset.id;
-                const studentName = card.querySelector('h3').textContent; // 간단하게 수정
+
+                // ★수정★: 'e.target'(클릭된 버튼)을 기준으로 부모(card)를 찾음
+                const studentCard = e.target.closest('.student-card');
+                const studentName = studentCard.querySelector('h3').textContent; // ★수정★
 
                 if (confirm(`정말로 '${studentName}' 학생을 삭제하시겠습니까?`)) {
                     db.collection("students").doc(id).delete()
