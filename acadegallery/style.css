@@ -1,78 +1,90 @@
 /* 기본 설정 */
 body {
     font-family: 'Arial', sans-serif;
-    background-color: #f4f7f6; /* 부드러운 회색 배경 */
+    background-color: #f0f2f5; /* 약간 더 어두운 배경 */
     margin: 0;
-    padding: 20px;
+    padding: 0;
 }
 
-/* 헤더 스타일 */
+/* 헤더 스타일 (이전과 거의 동일) */
 header {
     text-align: center;
-    margin-bottom: 30px;
-    color: #333;
+    padding: 25px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
-
 header h1 {
     margin: 0;
-    color: #0056b3; /* 포인트 컬러 (파란색 계열) */
+    color: #0056b3;
 }
-
 header p {
     font-size: 1.1em;
     color: #555;
+    margin-top: 5px;
 }
 
-/* 게임 갤러리 (카드 그리드) */
-#game-gallery {
-    display: grid;
-    /* 화면 크기에 따라 1~4개 카드를 유연하게 표시 */
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px; /* 카드 사이 간격 */
-    max-width: 1200px;
-    margin: 0 auto; /* 중앙 정렬 */
+/* ★수정★: 게임 게시물 목록 (메인 영역) */
+#game-post-list {
+    max-width: 800px; /* 블로그처럼 중앙에 좁게 */
+    margin: 30px auto; /* 위아래, 좌우 중앙 */
+    padding: 0 15px;
 }
 
-/* 개별 게임 카드 스타일 */
-.game-card {
+/* ★수정★: 개별 게임 게시물 카드 */
+.game-post {
     background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* 그림자 효과 */
-    text-decoration: none; /* 링크 밑줄 제거 */
-    color: #333;
-    transition: transform 0.2s, box-shadow 0.2s;
-    overflow: hidden; /* 이미지가 카드를 삐져나가지 않도록 */
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+    overflow: hidden; /* iFrame이 둥근 모서리를 지키도록 */
 }
 
-.game-card:hover {
-    transform: translateY(-5px); /* 마우스를 올리면 살짝 떠오르는 효과 */
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-}
-
-/* 카드 썸네일 이미지 */
-.game-card img {
-    width: 100%; /* 카드 너비에 꽉 차게 */
-    height: 180px; /* 썸네일 이미지 높이 고정 */
-    object-fit: cover; /* 이미지가 비율을 유지하며 꽉 차도록 */
-    border-bottom: 1px solid #eee;
-}
-
-/* 카드 내용 (게임 제목, 학생 이름) */
-.card-content {
-    padding: 15px;
-}
-
-.card-content h3 {
-    margin: 0 0 5px 0; /* 제목 위아래 여백 */
-    font-size: 1.2em;
-    /* 제목이 너무 길면 ...으로 자르기 */
-    white-space: nowrap;
+/* ★수정★: 게임 iFrame을 감싸는 컨테이너 */
+.iframe-container {
+    position: relative;
+    width: 100%;
+    /* MakeCode iFrame의 표준 비율 (높이 / 너비)
+       580 / 493 = 약 1.176
+       padding-bottom에 117.6%를 주면 비율이 완벽하게 맞습니다.
+    */
+    padding-bottom: 117.6%;
+    height: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
+    background-color: #222; /* 로딩 중 검은색 배경 */
 }
 
-.card-content p {
-    margin: 0;
-    font-size: 0.95em;
-    color: #666; /* 학생 이름은 약간 연한 색으로 */
+.iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none; /* iFrame 테두리 제거 */
+}
+
+/* 게임 게시물 내용 (제목, 스토리) */
+.post-content {
+    padding: 20px 25px;
+}
+.post-content h2 {
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+    color: #333;
+}
+.post-content .author {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #0056b3;
+    margin-bottom: 15px;
+}
+.post-content .story {
+    font-size: 1.05em;
+    line-height: 1.6; /* 줄 간격 */
+    color: #444;
+    /* 스토리가 너무 길면 ... 처리 (필요시 주석 해제)
+    max-height: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis; 
+    */
 }
