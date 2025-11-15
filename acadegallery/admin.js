@@ -31,17 +31,10 @@ const newStudentNameInput = document.getElementById('new-student-name');
 const addStudentBtn = document.getElementById('add-student-btn');
 const studentListDiv = document.getElementById('student-list');
 
-// 4. 로그인 기능
-loginBtn.onclick = () => {
-    auth.signInWithPopup(googleProvider);
-};
+// 4. 로그인 / 5. 로그아웃 / 6. 인증 상태 감지 (이전과 동일)
+loginBtn.onclick = () => { auth.signInWithPopup(googleProvider); };
+logoutBtn.onclick = () => { auth.signOut(); };
 
-// 5. 로그아웃 기능
-logoutBtn.onclick = () => {
-    auth.signOut();
-};
-
-// 6. 인증 상태 감지
 auth.onAuthStateChanged((user) => {
     if (user) {
         loginSection.style.display = 'none';
@@ -55,7 +48,7 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// 7. 새 학생 추가 기능
+// 7. 새 학생 추가 기능 (★수정됨★)
 addStudentBtn.onclick = () => {
     const name = newStudentNameInput.value.trim();
     if (name === "") {
@@ -67,7 +60,7 @@ addStudentBtn.onclick = () => {
         name: name,
         gameTitle: "",
         gameLink: "",
-        thumbnailUrl: "" // 썸네일 URL 필드 추가
+        gameStory: "" // <-- ★수정★ '게임 스토리' 필드 추가
     })
     .then(() => {
         console.log("학생 추가 성공!");
@@ -79,7 +72,7 @@ addStudentBtn.onclick = () => {
     });
 };
 
-// 8. 학생 목록 불러오고 관리 카드 만드는 기능
+// 8. 학생 목록 불러오고 관리 카드 만드는 기능 (★수정됨★)
 function loadStudents() {
     db.collection("students").orderBy("name").onSnapshot((snapshot) => {
         studentListDiv.innerHTML = '';
@@ -87,10 +80,10 @@ function loadStudents() {
             const student = doc.data();
             const docId = doc.id;
 
-            // 'card' 변수는 이 forEach 문 안에서만 유효합니다.
             const card = document.createElement('div');
             card.className = 'student-card';
             
+            // --- ★수정★ '게임 스토리' textarea 추가, 썸네일 input 제거 ---
             card.innerHTML = `
                 <h3>${student.name}</h3>
                 
@@ -99,14 +92,14 @@ function loadStudents() {
                     <input type="text" id="title-${docId}" value="${student.gameTitle || ''}">
                 </div>
                 
-                <div class="input-group">
-                    <label>게임 링크 (MakeCode 공유 주소)</label>
-                    <input type="text" id="link-${docId}" value="${student.gameLink || ''}">
+                <div classs="input-group">
+                    <label>게임 스토리</label>
+                    <textarea id="story-${docId}" rows="4" placeholder="학생의 게임 스토리를 입력하세요...">${student.gameStory || ''}</textarea>
                 </div>
 
                 <div class="input-group">
-                    <label>썸네일 이미지 URL (직접 입력)</label>
-                    <input type="text" id="thumb-${docId}" value="${student.thumbnailUrl || ''}" placeholder="예: https://i.imgur.com/image.png">
+                    <label>게임 링크 (iframe의 'src' 주소)</label>
+                    <input type="text" id="link-${docId}" value="${student.gameLink || ''}" placeholder="https://arcade.makecode.com/---run?id=S...">
                 </div>
 
                 <div class="button-group">
@@ -117,36 +110,34 @@ function loadStudents() {
             studentListDiv.appendChild(card);
         });
 
-        // 9. '저장' 버튼 기능 연결 (★버그 수정★)
+        // 9. '저장' 버튼 기능 연결 (★수정됨★)
         document.querySelectorAll('.btn-save').forEach(button => {
             button.onclick = (e) => {
                 const id = e.target.dataset.id;
                 const newTitle = document.getElementById(`title-${id}`).value;
+                const newStory = document.getElementById(`story-${id}`).value; // <-- ★수정★ 스토리 읽기
                 const newLink = document.getElementById(`link-${id}`).value;
-                const newThumb = document.getElementById(`thumb-${id}`).value;
-
-                // ★수정★: 'e.target'(클릭된 버튼)을 기준으로 부모(card)를 찾음
+                
                 const studentCard = e.target.closest('.student-card');
                 const studentName = studentCard.querySelector('h3').textContent;
 
+                // --- ★수정★ gameStory 저장, thumbnailUrl 제거 ---
                 db.collection("students").doc(id).update({
                     gameTitle: newTitle,
-                    gameLink: newLink,
-                    thumbnailUrl: newThumb
+                    gameStory: newStory,
+                    gameLink: newLink
                 })
-                .then(() => alert(`'${studentName}' 학생 정보 저장 완료!`)) // ★수정★
+                .then(() => alert(`'${studentName}' 학생 정보 저장 완료!`))
                 .catch((error) => alert("저장 실패: " + error.message));
             };
         });
 
-        // 10. '삭제' 버튼 기능 연결 (★버그 수정★)
+        // 10. '삭제' 버튼 기능 연결 (이전과 동일)
         document.querySelectorAll('.btn-delete').forEach(button => {
             button.onclick = (e) => {
                 const id = e.target.dataset.id;
-
-                // ★수정★: 'e.target'(클릭된 버튼)을 기준으로 부모(card)를 찾음
                 const studentCard = e.target.closest('.student-card');
-                const studentName = studentCard.querySelector('h3').textContent; // ★수정★
+                const studentName = studentCard.querySelector('h3').textContent; 
 
                 if (confirm(`정말로 '${studentName}' 학생을 삭제하시겠습니까?`)) {
                     db.collection("students").doc(id).delete()
