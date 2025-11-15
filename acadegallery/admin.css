@@ -142,3 +142,15 @@ main {
 .btn-delete:hover {
     background-color: #c9302c;
 }
+
+.student-card textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    font-family: 'Arial', sans-serif;
+    box-sizing: border-box; /* 패딩이 너비를 밀어내지 않도록 */
+    resize: vertical; /* 위아래로만 크기 조절 가능 */
+    min-height: 80px;
+}
