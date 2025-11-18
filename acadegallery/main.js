@@ -15,6 +15,7 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
+// 2. 초기화
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -32,7 +33,7 @@ function getFullUrl(student) {
     return null;
 }
 
-// 데이터 가져오기
+// 3. 데이터 가져오기
 db.collection("students").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
     
     gamePostList.innerHTML = ''; 
@@ -45,7 +46,7 @@ db.collection("students").orderBy("timestamp", "desc").onSnapshot((snapshot) => 
         const post = document.createElement('div');
         post.className = "game-post"; 
         
-        // ★ 상태 뱃지 만들기 (제목 옆에 표시될 작은 태그)
+        // 상태 뱃지 (작업중이어도 표시는 해줍니다)
         let statusBadge = "";
         if (status === "working") {
             statusBadge = `<span class="badge badge-wip">🚧 작업중</span>`;
@@ -53,35 +54,31 @@ db.collection("students").orderBy("timestamp", "desc").onSnapshot((snapshot) => 
             statusBadge = `<span class="badge badge-done">✅ 완료</span>`;
         }
 
-        // ★ 화면 내용 결정
+        // ★ 수정된 부분: 상태(working)와 상관없이 링크가 있으면 게임을 보여줍니다!
         let displayHtml = '';
 
-        if (status === "working") {
-            // 1) 작업중일 때: 게임 대신 안내 문구 표시
+        if (iframeSrc) {
+            // 링크가 있으면 -> 게임 화면(iFrame) 출력
             displayHtml = `
-                <div class="wip-container">
-                    <div class="wip-message">
-                        <h3>🔨 게임 제작 중...</h3>
-                        <p>멋진 게임을 만들기 위해 노력하고 있어요!</p>
-                    </div>
+                <div class="iframe-container">
+                    <iframe 
+                        src="${iframeSrc}" 
+                        allowfullscreen="allowfullscreen" 
+                        sandbox="allow-popups allow-forms allow-scripts allow-same-origin" 
+                        frameborder="0">
+                    </iframe>
                 </div>
             `;
         } else {
-            // 2) 완료되었을 때: iFrame 게임 표시
-            if (iframeSrc) {
-                displayHtml = `
-                    <div class="iframe-container">
-                        <iframe 
-                            src="${iframeSrc}" 
-                            allowfullscreen="allowfullscreen" 
-                            sandbox="allow-popups allow-forms allow-scripts allow-same-origin" 
-                            frameborder="0">
-                        </iframe>
+            // 링크가 없을 때만 -> 안내 문구 출력
+            displayHtml = `
+                <div class="wip-container">
+                    <div class="wip-message">
+                        <h3>🔗 링크 없음</h3>
+                        <p>아직 게임이 연결되지 않았습니다.</p>
                     </div>
-                `;
-            } else {
-                displayHtml = `<div class="wip-container"><p>게임 링크가 없습니다.</p></div>`;
-            }
+                </div>
+            `;
         }
 
         post.innerHTML = `
