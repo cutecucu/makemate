@@ -121,9 +121,7 @@ function showProjectSelector(projects) {
         if (!currentId && p.data.gameLink) currentId = extractGameId(p.data.gameLink);
 
         if (currentId) {
-            // ★ 수정된 부분: 요청하신 대로 주소 변경!
             playLink.href = `https://arcade.makecode.com/${currentId}`;
-            
             playLink.target = "_blank";
             playLink.innerHTML = "▶ 접속";
             playLink.style.display = "flex";
@@ -163,7 +161,7 @@ function showEditor(data) {
     document.getElementById('my-status').value = data.status || "working";
 }
 
-// 4. 저장하기 버튼
+// 4. ★수정된 저장하기 버튼 (저장 후 index.html로 이동)
 const saveBtn = document.getElementById('save-my-game-btn');
 if (saveBtn) {
     saveBtn.onclick = function() {
@@ -183,15 +181,14 @@ if (saveBtn) {
             status: newStatus,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
-            alert("저장되었습니다!");
+            // 저장 성공 시 알림 후 이동
+            alert("저장 완료! 오락실로 이동합니다.");
+            window.location.href = 'index.html';
         }).catch((error) => {
             alert("저장 실패: " + error.message);
         });
     };
 }
 
-// 5. 뒤로가기 / 나가기 버튼
-const backBtn = document.getElementById('back-btn');
-if (backBtn) {
-    backBtn.onclick = function() { location.reload(); };
-}
+// 5. 뒤로가기/나가기 버튼 기능은 삭제하거나, 버튼을 눌러도 아무 일 안하게 둡니다.
+// (HTML에서 버튼 태그 자체를 지워주시면 더 좋습니다)
