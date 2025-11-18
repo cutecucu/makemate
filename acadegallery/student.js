@@ -9,36 +9,6 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
-좋은 생각입니다! 💡
-
-학생이 프로젝트를 선택하는 화면에서, 수정을 하러 들어가기 전에 "내 게임이 잘 나오나?" 하고 바로 눌러볼 수 있는 버튼(링크)을 오른쪽에 만들어 드릴게요.
-
-student.js 파일 하나만 수정하면 됩니다.
-
-기존 student.js 파일의 내용을 모두 지우고, 아래 코드로 전체 덮어쓰기 해주세요.
-
-⚙️ student.js (접속 버튼 추가 버전 / 전체 덮어쓰기)
-변경된 점:
-
-showProjectSelector 함수가 완전히 바뀌었습니다.
-
-이제 프로젝트 목록이 한 줄에 [ 수정하기 버튼 (왼쪽) ] + [ ▶ 게임 접속 (오른쪽) ] 이렇게 두 개로 나뉘어 보입니다.
-
-'게임 접속' 버튼을 누르면 https://arcade.makecode.com/---run?id=아이디 주소로 새 창이 열립니다.
-
-JavaScript
-
-// 1. Firebase 설정 (선생님 키 복사 필수!)
-// (!!중요!!) 선생님의 firebaseConfig 코드를 아래에 정확히 붙여넣으세요.
-const firebaseConfig = {
-  apiKey: "AIzaSy...여기에-선생님-키-넣으세요",
-  authDomain: "your-project-id.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
-};
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -99,12 +69,8 @@ loginBtn.onclick = function() {
         // 결과에 따른 화면 이동
         if (matchedProjects.length === 0) {
             loginMsg.textContent = "비밀번호가 틀렸습니다.";
-        } else if (matchedProjects.length === 1) {
-            // 1개면 바로 수정 화면으로
-            myDocId = matchedProjects[0].id;
-            showEditor(matchedProjects[0].data);
         } else {
-            // 2개 이상이면 선택 화면으로
+            // ★수정됨★: 1개든 2개든 무조건 선택 화면으로 이동!
             showProjectSelector(matchedProjects);
         }
 
@@ -114,7 +80,7 @@ loginBtn.onclick = function() {
     });
 };
 
-// 2. (NEW) 프로젝트 선택 화면 보여주기 (★수정된 함수★)
+// 2. 프로젝트 선택 화면 보여주기
 function showProjectSelector(projects) {
     loginBox.style.display = 'none';
     selectBox.style.display = 'block';
@@ -123,7 +89,7 @@ function showProjectSelector(projects) {
     projectListDiv.innerHTML = ''; // 목록 초기화
 
     projects.forEach((p) => {
-        // 1. 한 줄(Row)을 만드는 컨테이너 (Flexbox 사용)
+        // 1. 한 줄(Row)을 만드는 컨테이너
         const row = document.createElement('div');
         row.style.display = "flex";
         row.style.gap = "10px"; // 버튼 사이 간격
@@ -137,7 +103,7 @@ function showProjectSelector(projects) {
         editBtn.innerHTML = `<strong>${title}</strong> <span style="font-size:0.8em; color:#666;">- ${status}</span>`;
         
         // 스타일 꾸미기
-        editBtn.style.flexGrow = "1"; // 남은 공간을 다 차지함
+        editBtn.style.flexGrow = "1"; 
         editBtn.style.padding = "15px";
         editBtn.style.border = "1px solid #ccc";
         editBtn.style.borderRadius = "8px";
@@ -161,12 +127,10 @@ function showProjectSelector(projects) {
 
         // ID가 있을 때만 링크 연결
         if (currentId) {
-            // ★ 요청하신 기능: ID 앞에 주소를 붙여서 링크 생성
             playLink.href = `https://arcade.makecode.com/---run?id=${currentId}`;
             playLink.target = "_blank"; // 새 탭에서 열기
             playLink.innerHTML = "▶ 접속";
             
-            // 접속 버튼 스타일 (파란색)
             playLink.style.display = "flex";
             playLink.style.alignItems = "center";
             playLink.style.justifyContent = "center";
@@ -176,13 +140,11 @@ function showProjectSelector(projects) {
             playLink.style.padding = "0 15px";
             playLink.style.borderRadius = "8px";
             playLink.style.fontWeight = "bold";
-            playLink.style.minWidth = "80px"; // 최소 너비
+            playLink.style.minWidth = "80px"; 
         } else {
-            // ID가 없으면 버튼 숨김 (또는 비활성화)
             playLink.style.display = "none";
         }
 
-        // 4. 줄(row)에 버튼 2개 추가하고, 목록에 줄 추가
         row.appendChild(editBtn);
         row.appendChild(playLink);
         projectListDiv.appendChild(row);
@@ -233,9 +195,4 @@ document.getElementById('save-my-game-btn').onclick = function() {
 // 5. 뒤로가기 / 나가기 버튼
 document.getElementById('back-btn').onclick = function() {
     location.reload();
-};
-
-// 5. 뒤로가기 / 나가기 버튼
-document.getElementById('back-btn').onclick = function() {
-    location.reload(); // 새로고침해서 로그인 화면으로 돌아감
 };
