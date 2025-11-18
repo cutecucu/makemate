@@ -9,6 +9,8 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
+// 설정 끝! 아래는 건드리지 마세요 -----------------------
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -23,7 +25,7 @@ const pwInput = document.getElementById('student-pw-input');
 const loginBtn = document.getElementById('student-login-btn');
 const loginMsg = document.getElementById('login-msg');
 
-let myDocId = null; // 현재 수정 중인 문서 ID
+let myDocId = null; 
 
 // ID 추출 함수
 function extractGameId(input) {
@@ -36,73 +38,72 @@ function extractGameId(input) {
 }
 
 // 1. 로그인 버튼 클릭
-loginBtn.onclick = function() {
-    const name = nameInput.value.trim();
-    const pw = pwInput.value.trim();
+// (버튼이 없으면 에러가 나지 않도록 안전장치 추가)
+if (loginBtn) {
+    loginBtn.onclick = function() {
+        const name = nameInput.value.trim();
+        const pw = pwInput.value.trim();
 
-    if (!name || !pw) {
-        loginMsg.textContent = "이름과 비밀번호를 모두 입력하세요.";
-        return;
-    }
-
-    loginMsg.textContent = "확인 중...";
-
-    // 이름으로 검색
-    db.collection("students").where("name", "==", name).get().then((querySnapshot) => {
-        if (querySnapshot.empty) {
-            loginMsg.textContent = "그런 이름의 학생이 없어요.";
+        if (!name || !pw) {
+            if(loginMsg) loginMsg.textContent = "이름과 비밀번호를 모두 입력하세요.";
             return;
         }
 
-        // 비밀번호가 일치하는 프로젝트들을 모두 찾아서 배열에 담기
-        const matchedProjects = [];
-        
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            const storedPw = data.password || "1234";
-            
-            if (String(storedPw) === String(pw)) {
-                matchedProjects.push({ id: doc.id, data: data });
+        if(loginMsg) loginMsg.textContent = "확인 중...";
+
+        db.collection("students").where("name", "==", name).get().then((querySnapshot) => {
+            if (querySnapshot.empty) {
+                if(loginMsg) loginMsg.textContent = "그런 이름의 학생이 없어요.";
+                return;
             }
+
+            const matchedProjects = [];
+            
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const storedPw = data.password || "1234";
+                
+                if (String(storedPw) === String(pw)) {
+                    matchedProjects.push({ id: doc.id, data: data });
+                }
+            });
+
+            if (matchedProjects.length === 0) {
+                if(loginMsg) loginMsg.textContent = "비밀번호가 틀렸습니다.";
+            } else {
+                // 1개든 2개든 무조건 선택 화면으로!
+                showProjectSelector(matchedProjects);
+            }
+
+        }).catch((error) => {
+            console.error(error);
+            if(loginMsg) loginMsg.textContent = "오류가 발생했습니다.";
         });
+    };
+} else {
+    console.error("오류: HTML에서 'student-login-btn' 아이디를 가진 버튼을 찾을 수 없습니다. student.html 파일을 확인하세요.");
+}
 
-        // 결과에 따른 화면 이동
-        if (matchedProjects.length === 0) {
-            loginMsg.textContent = "비밀번호가 틀렸습니다.";
-        } else {
-            // ★수정됨★: 1개든 2개든 무조건 선택 화면으로 이동!
-            showProjectSelector(matchedProjects);
-        }
-
-    }).catch((error) => {
-        console.error(error);
-        loginMsg.textContent = "오류가 발생했습니다.";
-    });
-};
-
-// 2. 프로젝트 선택 화면 보여주기
+// 2. 프로젝트 선택 화면
 function showProjectSelector(projects) {
     loginBox.style.display = 'none';
     selectBox.style.display = 'block';
     editBox.style.display = 'none';
 
-    projectListDiv.innerHTML = ''; // 목록 초기화
+    projectListDiv.innerHTML = ''; 
 
     projects.forEach((p) => {
-        // 1. 한 줄(Row)을 만드는 컨테이너
         const row = document.createElement('div');
         row.style.display = "flex";
-        row.style.gap = "10px"; // 버튼 사이 간격
+        row.style.gap = "10px";
         row.style.marginBottom = "10px";
 
-        // 2. 왼쪽: 수정하기 버튼 (크게)
+        // 왼쪽: 수정 버튼
         const editBtn = document.createElement('button');
         const title = p.data.gameTitle || "(제목 없는 프로젝트)";
         const status = p.data.status === "completed" ? "✅ 완료" : "🚧 작업중";
         
         editBtn.innerHTML = `<strong>${title}</strong> <span style="font-size:0.8em; color:#666;">- ${status}</span>`;
-        
-        // 스타일 꾸미기
         editBtn.style.flexGrow = "1"; 
         editBtn.style.padding = "15px";
         editBtn.style.border = "1px solid #ccc";
@@ -112,25 +113,20 @@ function showProjectSelector(projects) {
         editBtn.style.textAlign = "left";
         editBtn.style.fontSize = "1.1em";
 
-        // 수정 버튼 클릭 시
         editBtn.onclick = () => {
             myDocId = p.id;
             showEditor(p.data);
         };
 
-        // 3. 오른쪽: 게임 접속 버튼 (작게)
+        // 오른쪽: 접속 버튼
         const playLink = document.createElement('a');
-        
-        // ID 추출
         let currentId = p.data.gameId || "";
         if (!currentId && p.data.gameLink) currentId = extractGameId(p.data.gameLink);
 
-        // ID가 있을 때만 링크 연결
         if (currentId) {
             playLink.href = `https://arcade.makecode.com/---run?id=${currentId}`;
-            playLink.target = "_blank"; // 새 탭에서 열기
+            playLink.target = "_blank";
             playLink.innerHTML = "▶ 접속";
-            
             playLink.style.display = "flex";
             playLink.style.alignItems = "center";
             playLink.style.justifyContent = "center";
@@ -151,7 +147,7 @@ function showProjectSelector(projects) {
     });
 }
 
-// 3. 에디터 화면 보여주기
+// 3. 에디터 화면
 function showEditor(data) {
     loginBox.style.display = 'none';
     selectBox.style.display = 'none';
@@ -168,31 +164,35 @@ function showEditor(data) {
     document.getElementById('my-status').value = data.status || "working";
 }
 
-// 4. 저장하기 버튼
-document.getElementById('save-my-game-btn').onclick = function() {
-    if (!myDocId) return;
+// 4. 저장 버튼
+const saveBtn = document.getElementById('save-my-game-btn');
+if (saveBtn) {
+    saveBtn.onclick = function() {
+        if (!myDocId) return;
 
-    const newTitle = document.getElementById('my-title').value;
-    const newStory = document.getElementById('my-story').value;
-    const rawId = document.getElementById('my-id').value;
-    const newStatus = document.getElementById('my-status').value;
+        const newTitle = document.getElementById('my-title').value;
+        const newStory = document.getElementById('my-story').value;
+        const rawId = document.getElementById('my-id').value;
+        const newStatus = document.getElementById('my-status').value;
 
-    const cleanId = extractGameId(rawId);
+        const cleanId = extractGameId(rawId);
 
-    db.collection("students").doc(myDocId).update({
-        gameTitle: newTitle,
-        gameStory: newStory,
-        gameId: cleanId,
-        status: newStatus,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => {
-        alert("저장되었습니다!");
-    }).catch((error) => {
-        alert("저장 실패: " + error.message);
-    });
-};
+        db.collection("students").doc(myDocId).update({
+            gameTitle: newTitle,
+            gameStory: newStory,
+            gameId: cleanId,
+            status: newStatus,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            alert("저장되었습니다!");
+        }).catch((error) => {
+            alert("저장 실패: " + error.message);
+        });
+    };
+}
 
-// 5. 뒤로가기 / 나가기 버튼
-document.getElementById('back-btn').onclick = function() {
-    location.reload();
-};
+// 5. 나가기 버튼
+const backBtn = document.getElementById('back-btn');
+if (backBtn) {
+    backBtn.onclick = function() { location.reload(); };
+}
