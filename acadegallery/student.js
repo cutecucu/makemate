@@ -9,7 +9,7 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
-// 설정 끝! 아래는 건드리지 마세요 -----------------------
+// -------------------------------------------------------
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -38,7 +38,6 @@ function extractGameId(input) {
 }
 
 // 1. 로그인 버튼 클릭
-// (버튼이 없으면 에러가 나지 않도록 안전장치 추가)
 if (loginBtn) {
     loginBtn.onclick = function() {
         const name = nameInput.value.trim();
@@ -71,7 +70,7 @@ if (loginBtn) {
             if (matchedProjects.length === 0) {
                 if(loginMsg) loginMsg.textContent = "비밀번호가 틀렸습니다.";
             } else {
-                // 1개든 2개든 무조건 선택 화면으로!
+                // 무조건 선택 화면으로 이동
                 showProjectSelector(matchedProjects);
             }
 
@@ -80,11 +79,9 @@ if (loginBtn) {
             if(loginMsg) loginMsg.textContent = "오류가 발생했습니다.";
         });
     };
-} else {
-    console.error("오류: HTML에서 'student-login-btn' 아이디를 가진 버튼을 찾을 수 없습니다. student.html 파일을 확인하세요.");
 }
 
-// 2. 프로젝트 선택 화면
+// 2. 프로젝트 선택 화면 보여주기
 function showProjectSelector(projects) {
     loginBox.style.display = 'none';
     selectBox.style.display = 'block';
@@ -118,13 +115,15 @@ function showProjectSelector(projects) {
             showEditor(p.data);
         };
 
-        // 오른쪽: 접속 버튼
+        // 오른쪽: 접속 버튼 (작게)
         const playLink = document.createElement('a');
         let currentId = p.data.gameId || "";
         if (!currentId && p.data.gameLink) currentId = extractGameId(p.data.gameLink);
 
         if (currentId) {
-            playLink.href = `https://arcade.makecode.com/---run?id=${currentId}`;
+            // ★ 수정된 부분: 요청하신 대로 주소 변경!
+            playLink.href = `https://arcade.makecode.com/${currentId}`;
+            
             playLink.target = "_blank";
             playLink.innerHTML = "▶ 접속";
             playLink.style.display = "flex";
@@ -147,7 +146,7 @@ function showProjectSelector(projects) {
     });
 }
 
-// 3. 에디터 화면
+// 3. 에디터 화면 보여주기
 function showEditor(data) {
     loginBox.style.display = 'none';
     selectBox.style.display = 'none';
@@ -164,7 +163,7 @@ function showEditor(data) {
     document.getElementById('my-status').value = data.status || "working";
 }
 
-// 4. 저장 버튼
+// 4. 저장하기 버튼
 const saveBtn = document.getElementById('save-my-game-btn');
 if (saveBtn) {
     saveBtn.onclick = function() {
@@ -191,7 +190,7 @@ if (saveBtn) {
     };
 }
 
-// 5. 나가기 버튼
+// 5. 뒤로가기 / 나가기 버튼
 const backBtn = document.getElementById('back-btn');
 if (backBtn) {
     backBtn.onclick = function() { location.reload(); };
