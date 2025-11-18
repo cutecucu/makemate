@@ -15,30 +15,6 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
-이해했습니다! 이제 '학생 명부' 개념에서 '게임 프로젝트 목록' 개념으로 바꾸는 것이군요.
-
-동명이인(같은 이름) 허용: 선생님이 '김철수'라는 이름을 5번 추가하면, 5개의 서로 다른 게임 카드가 만들어집니다. (이름 뒤에 숫자 1, 2를 붙일 필요가 없습니다.)
-
-상태 표시 (작업중/완료): 선생님이 '작업중'을 선택하면 학생들에게 "🚧 공사중" 처럼 보이게 하고, '완료'를 선택하면 게임이 제대로 보이게 하겠습니다.
-
-admin.js, main.js, style.css 3개의 파일을 수정해야 합니다.
-
-1. ⚙️ admin.js (상태 선택 기능 추가)
-이제 학생을 추가할 때 상태(Status) 필드가 추가되고, 관리자 화면에서 '작업중/완료'를 선택할 수 있는 드롭다운 메뉴가 생깁니다.
-
-기존 코드를 모두 지우고 아래 코드로 덮어쓰기 해주세요.
-
-JavaScript
-
-// 1. Firebase 설정
-const firebaseConfig = {
-  apiKey: "AIzaSy...여기에-선생님-키-그대로-두세요",
-  authDomain: "your-project-id.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
-};
 
 // 2. 초기화
 if (!firebase.apps.length) {
