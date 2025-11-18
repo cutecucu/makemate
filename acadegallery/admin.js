@@ -17,14 +17,12 @@ const firebaseConfig = {
 
 
 // 2. 초기화
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const auth = firebase.auth();
 const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// 3. 요소 가져오기
+// 요소 가져오기
 const loginSection = document.getElementById('login-section');
 const adminPanel = document.getElementById('admin-panel');
 const loginBtn = document.getElementById('login-btn');
@@ -34,7 +32,7 @@ const newStudentNameInput = document.getElementById('new-student-name');
 const addStudentBtn = document.getElementById('add-student-btn');
 const studentListDiv = document.getElementById('student-list');
 
-// 4. 로그인/로그아웃
+// 로그인/로그아웃
 loginBtn.onclick = () => auth.signInWithPopup(googleProvider);
 logoutBtn.onclick = () => auth.signOut();
 
@@ -61,21 +59,21 @@ function extractGameId(input) {
     return input.trim();
 }
 
-// 7. 새 프로젝트(학생) 추가
-addStudentBtn.onclick = () => {
+// 7. 새 프로젝트(학생) 추가 - ★비밀번호 자동 생성 (예: 1234)
+addStudentBtn.onclick = function() {
     const name = newStudentNameInput.value.trim();
     if (name === "") {
         alert("학생 이름을 입력하세요!");
         return;
     }
 
-    // ★ 중요: 같은 이름이 있어도 상관없이 '새 문서'를 만듭니다. (숫자 안 붙여도 됨)
     db.collection("students").add({
         name: name,
+        password: "1234", // ★ 기본 비밀번호 '1234'로 생성
         gameTitle: "",
         gameStory: "",
         gameId: "",
-        status: "working", // ★ 기본값은 '작업중'
+        status: "working", 
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
@@ -83,33 +81,28 @@ addStudentBtn.onclick = () => {
         newStudentNameInput.value = "";
     })
     .catch((error) => {
-        console.error("실패:", error);
+        console.error("추가 실패:", error);
         alert("추가 실패.");
     });
 };
 
 // 8. 목록 불러오기
 function loadStudents() {
-    // 최신순(timestamp desc)으로 정렬하여 관리하기 편하게 함
     db.collection("students").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
         studentListDiv.innerHTML = '';
         snapshot.forEach((doc) => {
             const student = doc.data();
             const docId = doc.id;
             
-            // ID 호환성 처리
             let currentId = student.gameId || "";
-            if (!currentId && student.gameLink) {
-                currentId = extractGameId(student.gameLink);
-            }
-
-            // 상태값 (없으면 'working'으로 취급)
+            if (!currentId && student.gameLink) currentId = extractGameId(student.gameLink);
             const currentStatus = student.status || "working";
+            const currentPw = student.password || "1234"; // 비밀번호 없으면 1234
 
             const card = document.createElement('div');
             card.className = 'student-card';
             
-            // ★ 수정: 상태 선택(Select) 박스 추가
+            // ★ 비밀번호 입력 칸 추가됨
             card.innerHTML = `
                 <div class="card-header">
                     <h3>${student.name}</h3>
@@ -120,8 +113,13 @@ function loadStudents() {
                 </div>
                 
                 <div class="input-group">
+                    <label>🔑 접속 비밀번호 (학생용)</label>
+                    <input type="text" id="pw-${docId}" value="${currentPw}" style="background-color:#fff3cd;">
+                </div>
+
+                <div class="input-group">
                     <label>게임 제목</label>
-                    <input type="text" id="title-${docId}" value="${student.gameTitle || ''}" placeholder="게임 제목 입력">
+                    <input type="text" id="title-${docId}" value="${student.gameTitle || ''}">
                 </div>
                 
                 <div class="input-group">
@@ -130,8 +128,8 @@ function loadStudents() {
                 </div>
 
                 <div class="input-group">
-                    <label>게임 ID (S...)</label>
-                    <input type="text" id="id-${docId}" value="${currentId}" placeholder="S00000-00000...">
+                    <label>게임 ID</label>
+                    <input type="text" id="id-${docId}" value="${currentId}">
                 </div>
 
                 <div class="button-group">
@@ -142,23 +140,24 @@ function loadStudents() {
             studentListDiv.appendChild(card);
         });
 
-        // 9. 저장 버튼
+        // 저장 버튼
         document.querySelectorAll('.btn-save').forEach(button => {
             button.onclick = (e) => {
                 const id = e.target.dataset.id;
                 const newTitle = document.getElementById(`title-${id}`).value;
                 const newStory = document.getElementById(`story-${id}`).value;
                 const rawIdInput = document.getElementById(`id-${id}`).value;
-                const newStatus = document.getElementById(`status-${id}`).value; // ★ 상태값 읽기
+                const newStatus = document.getElementById(`status-${id}`).value;
+                const newPw = document.getElementById(`pw-${id}`).value; // ★ 비밀번호 읽기
                 
                 const cleanId = extractGameId(rawIdInput);
                 
-                // 저장 시 시간 업데이트 (맨 위로 올라옴)
                 db.collection("students").doc(id).update({
                     gameTitle: newTitle,
                     gameStory: newStory,
                     gameId: cleanId,
-                    status: newStatus, // ★ 상태 저장
+                    status: newStatus,
+                    password: newPw, // ★ 비밀번호 저장
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 })
                 .then(() => alert(`저장 완료!`))
@@ -166,14 +165,12 @@ function loadStudents() {
             };
         });
 
-        // 10. 삭제 버튼
+        // 삭제 버튼 (생략 - 이전과 동일)
         document.querySelectorAll('.btn-delete').forEach(button => {
             button.onclick = (e) => {
                 const id = e.target.dataset.id;
                 if (confirm("정말 삭제하시겠습니까?")) {
-                    db.collection("students").doc(id).delete()
-                    .then(() => alert("삭제 완료!"))
-                    .catch((error) => alert("삭제 실패"));
+                    db.collection("students").doc(id).delete();
                 }
             };
         });
