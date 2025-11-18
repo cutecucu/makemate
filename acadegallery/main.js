@@ -15,38 +15,45 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
-// 2. Firebase 앱 초기화하기
-firebase.initializeApp(firebaseConfig);
-
-// 3. Firestore 데이터베이스 서비스 사용하기
+// 2. 초기화
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
-
-// 4. 필요한 HTML 요소(태그) 가져오기
 const gamePostList = document.getElementById('game-post-list');
 
-// 5. Firestore에서 게임 데이터 가져와서 화면에 그리기 (★수정됨★)
-db.collection("students").orderBy("name").onSnapshot((snapshot) => {
+// ★ 보조 함수: 예전 데이터(전체링크)와 새 데이터(ID) 호환 처리
+function getFullUrl(student) {
+    // 1. 새 방식: gameId가 있으면 주소를 조립
+    if (student.gameId && student.gameId.trim() !== "") {
+        return `https://arcade.makecode.com/---run?id=${student.gameId.trim()}`;
+    }
+    // 2. 예전 방식: gameId는 없고 gameLink(전체주소)만 있다면 그거 사용
+    if (student.gameLink) {
+        return student.gameLink;
+    }
+    return null;
+}
+
+// 3. 데이터 가져오기
+// ★ 수정됨: 'name' 대신 'timestamp' 기준, 'desc'(내림차순=최신순) 정렬
+db.collection("students").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
     
-    console.log("iFrame 버전 데이터를 성공적으로 가져왔습니다!");
-    gamePostList.innerHTML = ''; // 목록을 비웁니다.
+    gamePostList.innerHTML = ''; 
     
     snapshot.forEach((doc) => {
-        // doc.data() 예: 
-        // { name: "김철수", gameTitle: "탈출게임", gameStory: "...", gameLink: "..." }
         const student = doc.data();
+        const iframeSrc = getFullUrl(student);
 
-        // <div> 태그로 '게시물'을 만듭니다.
         const post = document.createElement('div');
-        post.className = "game-post"; // css 스타일 적용
+        post.className = "game-post"; 
         
-        // ★수정★: 게시물 안의 내용을 HTML로 채웁니다.
-        // gameLink가 비어있으면 iFrame 영역을 만들지 않습니다.
         let iframeHtml = '';
-        if (student.gameLink) {
+        if (iframeSrc) {
             iframeHtml = `
                 <div class="iframe-container">
                     <iframe 
-                        src="${student.gameLink}" 
+                        src="${iframeSrc}" 
                         allowfullscreen="allowfullscreen" 
                         sandbox="allow-popups allow-forms allow-scripts allow-same-origin" 
                         frameborder="0">
@@ -60,11 +67,10 @@ db.collection("students").orderBy("name").onSnapshot((snapshot) => {
             <div class="post-content">
                 <h2>${student.gameTitle || "제목 없음"}</h2>
                 <p class="author">만든 사람: ${student.name}</p>
-                <p class="story">${student.gameStory || "게임 스토리가 아직 없습니다."}</p>
+                <p class="story">${student.gameStory || "내용 없음"}</p>
             </div>
         `;
         
-        // 완성된 게시물을 목록에 추가합니다.
         gamePostList.appendChild(post);
     });
 });
