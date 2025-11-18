@@ -1,11 +1,12 @@
 // 1. Firebase 설정 (선생님 키 복사 필수!)
 const firebaseConfig = {
-  apiKey: "AIzaSy...여기에-선생님-키-넣으세요",
-  authDomain: "your-project-id.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project-id.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  apiKey: "AIzaSyDBgFkiyBCGcyPC-JZmn8r6wDFvQRqxJHw",
+  authDomain: "acadeworld.firebaseapp.com",
+  projectId: "acadeworld",
+  storageBucket: "acadeworld.firebasestorage.app",
+  messagingSenderId: "1049646858688",
+  appId: "1:1049646858688:web:4156a74d9883c6a4a3c825",
+  measurementId: "G-L3PFK28H6E"
 };
 
 firebase.initializeApp(firebaseConfig);
