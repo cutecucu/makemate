@@ -15,6 +15,31 @@ const firebaseConfig = {
   measurementId: "G-L3PFK28H6E"
 };
 
+이해했습니다! 이제 '학생 명부' 개념에서 '게임 프로젝트 목록' 개념으로 바꾸는 것이군요.
+
+동명이인(같은 이름) 허용: 선생님이 '김철수'라는 이름을 5번 추가하면, 5개의 서로 다른 게임 카드가 만들어집니다. (이름 뒤에 숫자 1, 2를 붙일 필요가 없습니다.)
+
+상태 표시 (작업중/완료): 선생님이 '작업중'을 선택하면 학생들에게 "🚧 공사중" 처럼 보이게 하고, '완료'를 선택하면 게임이 제대로 보이게 하겠습니다.
+
+admin.js, main.js, style.css 3개의 파일을 수정해야 합니다.
+
+1. ⚙️ admin.js (상태 선택 기능 추가)
+이제 학생을 추가할 때 상태(Status) 필드가 추가되고, 관리자 화면에서 '작업중/완료'를 선택할 수 있는 드롭다운 메뉴가 생깁니다.
+
+기존 코드를 모두 지우고 아래 코드로 덮어쓰기 해주세요.
+
+JavaScript
+
+// 1. Firebase 설정
+const firebaseConfig = {
+  apiKey: "AIzaSy...여기에-선생님-키-그대로-두세요",
+  authDomain: "your-project-id.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project-id.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
+};
+
 // 2. 초기화
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
@@ -50,19 +75,17 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// ★보조 함수: 입력값에서 ID만 쏙 뽑아내는 함수
+// ID 추출 함수
 function extractGameId(input) {
     if (!input) return "";
-    // 만약 'id=' 이 포함된 긴 주소라면?
     if (input.includes("id=")) {
         const match = input.match(/id=([a-zA-Z0-9-]+)/);
-        return match ? match[1] : input; // 찾으면 ID반환, 못찾으면 입력값 그대로
+        return match ? match[1] : input;
     }
-    // 그냥 ID만 넣었다면?
     return input.trim();
 }
 
-// 7. 새 학생 추가
+// 7. 새 프로젝트(학생) 추가
 addStudentBtn.onclick = () => {
     const name = newStudentNameInput.value.trim();
     if (name === "") {
@@ -70,16 +93,17 @@ addStudentBtn.onclick = () => {
         return;
     }
 
-    // 처음 생성할 때 현재 시간을 timestamp로 찍습니다.
+    // ★ 중요: 같은 이름이 있어도 상관없이 '새 문서'를 만듭니다. (숫자 안 붙여도 됨)
     db.collection("students").add({
         name: name,
         gameTitle: "",
         gameStory: "",
-        gameId: "",    // gameLink 대신 gameId만 저장
-        timestamp: firebase.firestore.FieldValue.serverTimestamp() // ★ 중요: 생성 시간 기록
+        gameId: "",
+        status: "working", // ★ 기본값은 '작업중'
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        console.log("학생 추가 성공!");
+        console.log("추가 성공!");
         newStudentNameInput.value = "";
     })
     .catch((error) => {
@@ -88,38 +112,49 @@ addStudentBtn.onclick = () => {
     });
 };
 
-// 8. 목록 불러오기 (관리자 화면은 이름순 정렬이 편합니다)
+// 8. 목록 불러오기
 function loadStudents() {
-    db.collection("students").orderBy("name").onSnapshot((snapshot) => {
+    // 최신순(timestamp desc)으로 정렬하여 관리하기 편하게 함
+    db.collection("students").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
         studentListDiv.innerHTML = '';
         snapshot.forEach((doc) => {
             const student = doc.data();
             const docId = doc.id;
             
-            // 기존 데이터(gameLink)가 있다면 ID만 추출해서 보여주기 (호환성)
+            // ID 호환성 처리
             let currentId = student.gameId || "";
             if (!currentId && student.gameLink) {
                 currentId = extractGameId(student.gameLink);
             }
 
+            // 상태값 (없으면 'working'으로 취급)
+            const currentStatus = student.status || "working";
+
             const card = document.createElement('div');
             card.className = 'student-card';
             
+            // ★ 수정: 상태 선택(Select) 박스 추가
             card.innerHTML = `
-                <h3>${student.name}</h3>
+                <div class="card-header">
+                    <h3>${student.name}</h3>
+                    <select id="status-${docId}" class="status-select">
+                        <option value="working" ${currentStatus === 'working' ? 'selected' : ''}>🚧 작업중</option>
+                        <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>✅ 완료됨</option>
+                    </select>
+                </div>
                 
                 <div class="input-group">
                     <label>게임 제목</label>
-                    <input type="text" id="title-${docId}" value="${student.gameTitle || ''}">
+                    <input type="text" id="title-${docId}" value="${student.gameTitle || ''}" placeholder="게임 제목 입력">
                 </div>
                 
                 <div class="input-group">
                     <label>게임 스토리</label>
-                    <textarea id="story-${docId}" rows="4">${student.gameStory || ''}</textarea>
+                    <textarea id="story-${docId}" rows="3">${student.gameStory || ''}</textarea>
                 </div>
 
                 <div class="input-group">
-                    <label>게임 ID (예: S1234... 또는 링크 붙여넣기)</label>
+                    <label>게임 ID (S...)</label>
                     <input type="text" id="id-${docId}" value="${currentId}" placeholder="S00000-00000...">
                 </div>
 
@@ -138,21 +173,19 @@ function loadStudents() {
                 const newTitle = document.getElementById(`title-${id}`).value;
                 const newStory = document.getElementById(`story-${id}`).value;
                 const rawIdInput = document.getElementById(`id-${id}`).value;
+                const newStatus = document.getElementById(`status-${id}`).value; // ★ 상태값 읽기
                 
-                // ★ 스마트 처리: 링크를 넣어도 ID만 추출
                 const cleanId = extractGameId(rawIdInput);
-
-                const studentCard = e.target.closest('.student-card');
-                const studentName = studentCard.querySelector('h3').textContent;
-
+                
+                // 저장 시 시간 업데이트 (맨 위로 올라옴)
                 db.collection("students").doc(id).update({
                     gameTitle: newTitle,
                     gameStory: newStory,
-                    gameId: cleanId, // ID만 저장
-                    // ★ 저장할 때마다 시간을 업데이트해서 맨 위로 올리기 (원치 않으면 이 줄 삭제)
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp() 
+                    gameId: cleanId,
+                    status: newStatus, // ★ 상태 저장
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 })
-                .then(() => alert(`'${studentName}' 저장 완료!`))
+                .then(() => alert(`저장 완료!`))
                 .catch((error) => alert("저장 실패: " + error.message));
             };
         });
