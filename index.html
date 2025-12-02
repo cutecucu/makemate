@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Make:it Sketch - Vanilla JS</title>
+  <!-- Fabric.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"
+          integrity="sha512-+rridGxtqgPiP86iSPlFzMJfttKx9UNkG2LHz8dfpLqu+UJIUjTmCN0Yo3GbpIUxfj2cY7YNhPkcyjNVQyHYpg=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f4f5;
+      color: #111827;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 50px;
+      background: #111827;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      justify-content: space-between;
+    }
+    header h1 {
+      font-size: 16px;
+      margin: 0;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .tab-btn {
+      border: none;
+      padding: 6px 10px;
+      font-size: 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      background: #374151;
+      color: white;
+      opacity: 0.7;
+    }
+    .tab-btn.active {
+      background: #f97316;
+      opacity: 1;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+    .panel.active {
+      display: flex;
+    }
+
+    /* Sketch 레이아웃 */
+    #sketchPanel {
+      display: flex;
+    }
+    .toolbar {
+      width: 190px;
+      background: #e5e7eb;
+      border-right: 1px solid #d1d5db;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toolbar-section {
+      background: white;
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .toolbar-section h3 {
+      font-size: 13px;
+      margin: 0 0 4px 0;
+      color: #4b5563;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .btn {
+      border: none;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 12px;
+      cursor: pointer;
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .btn.small {
+      padding: 3px 4px;
+      font-size: 11px;
+    }
+    .btn.primary {
+      background: #2563eb;
+      color: white;
+    }
+    .btn.selected {
+      background: #f97316;
+      color: white;
+    }
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .field-row label {
+      font-size: 11px;
+      color: #4b5563;
+    }
+    .field-row input[type="number"] {
+      width: 60px;
+      padding: 2px 4px;
+      font-size: 12px;
+    }
+
+    .canvas-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+    canvas {
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+
+    /* Circuit / Gallery 패널 */
+    #circuitPanel, #galleryPanel {
+      padding: 10px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .gallery-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      overflow-y: auto;
+    }
+    .thumb-card {
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .thumb-card img {
+      width: 100%;
+      border-radius: 6px;
+    }
+    .thumb-title {
+      font-size: 12px;
+      color: #374151;
+    }
+
+    @media (max-width: 768px) {
+      .toolbar {
+        width: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Make:it Sketch – Vanilla JS Prototype</h1>
+  <div class="tabs">
+    <button class="tab-btn active" data-target="sketchPanel">Sketch</button>
+    <button class="tab-btn" data-target="circuitPanel">Circuit</button>
+    <button class="tab-btn" data-target="galleryPanel">Gallery</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Sketch Panel -->
+  <section id="sketchPanel" class="panel active">
+    <aside class="toolbar">
+      <div class="toolbar-section">
+        <h3>Mode</h3>
+        <div class="button-row">
+          <button class="btn small mode-btn selected" data-mode="select">Select</button>
+          <button class="btn small mode-btn" data-mode="draw">Draw</button>
+          <button class="btn small mode-btn" data-mode="rect">Rect</button>
+          <button class="btn small mode-btn" data-mode="circle">Circle</button>
+        </div>
+      </div>
+
+      <div class="toolbar-section">
+        <h3>Style</h3>
+        <div class="field-row">
+          <label for="strokeColor">Color</label>
+          <input type="color" id="strokeColor" value="#2563eb" />
+        </div>
+        <div class="field-row">
+          <label for="strokeWidth">Width</label>
+          <input type="number" id="strokeWidth" min="1" max="20" value="3" />
+        </div>
+      </div>
+
+      <div class="toolbar-section">
+        <h3>Interaction</h3>
+        <div class="button-row">
+          <button class="btn small behavior-btn" data-behavior="motor">Motor</button>
+          <button class="btn small behavior-btn" data-behavior="servo">Servo</button>
+          <button class="btn small behavior-btn" data-behavior="led">LED</button>
+          <button class="btn small behavior-btn" data-behavior="buzzer">Buzzer</button>
+        </div>
+        <small style="font-size:11px;color:#6b7280;">
+          객체 선택 후 버튼을 누르면 동작 속성이 부여됩니다.
+        </small>
+      </div>
+
+      <div class="toolbar-section">
+        <h3>Canvas</h3>
+        <div class="button-row">
+          <button class="btn small" id="btnClear">Clear</button>
+          <button class="btn small" id="btnDelete">Delete</button>
+        </div>
+      </div>
+
+      <div class="toolbar-section">
+        <h3>Gallery</h3>
+        <div class="button-row">
+          <button class="btn small primary" id="btnSaveToGallery">Save</button>
+        </div>
+        <small style="font-size:11px;color:#6b7280;">
+          Firebase 대신 브라우저 메모리에만 저장됩니다.
+        </small>
+      </div>
+    </aside>
+
+    <div class="canvas-wrapper">
+      <canvas id="sketchCanvas"></canvas>
+    </div>
+  </section>
+
+  <!-- Circuit Panel -->
+  <section id="circuitPanel" class="panel">
+    <h2>회로 모드 (Circuit Mode)</h2>
+    <p style="font-size:13px;color:#4b5563;max-width:600px;">
+      여기에는 Battery, Microbit, Switch 등의 벡터 부품과 스냅 포인트, 배선 로직 등을
+      추가할 수 있습니다. 현재 예시는 구조만 잡아두었고, 추후 <b>Fabric.js</b>의
+      커스텀 도형 및 선(line) 객체를 사용하여 확장하면 됩니다.
+    </p>
+    <p style="font-size:12px;color:#6b7280;">
+      - 스케치 모드의 위치를 반투명으로 보여주는 Ghost Guide<br/>
+      - 핀 근처에서만 전선을 스냅시키는 Wiring Logic<br/>
+      - 전류 애니메이션(Marching Ants)<br/>
+      등을 이 영역에 구현할 수 있습니다.
+    </p>
+  </section>
+
+  <!-- Gallery Panel -->
+  <section id="galleryPanel" class="panel">
+    <div class="gallery-controls">
+      <button class="btn small primary" id="btnRefreshGallery">Refresh</button>
+      <span style="font-size:12px;color:#6b7280;">
+        (현재 세션 동안 저장된 스케치 썸네일을 확인합니다)
+      </span>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </section>
+</div>
+
+<script>
+  // -----------------------------
+  // 탭 전환 로직
+  // -----------------------------
+  (function initTabs() {
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const panels = document.querySelectorAll(".panel");
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        const targetId = btn.dataset.target;
+        panels.forEach(p => {
+          if (p.id === targetId) p.classList.add("active");
+          else p.classList.remove("active");
+        });
+      });
+    });
+  })();
+
+  // -----------------------------
+  // Fabric.js 캔버스 초기화
+  // -----------------------------
+  let canvas;
+  let currentMode = "select"; // select | draw | rect | circle
+  let currentColor = "#2563eb";
+  let currentWidth = 3;
+  const galleryStore = []; // { title, dataUrl, json }
+
+  function initCanvas() {
+    canvas = new fabric.Canvas("sketchCanvas", {
+      backgroundColor: "#ffffff",
+      selection: true,
+      preserveObjectStacking: true
+    });
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // 기본 드로잉 설정
+    canvas.isDrawingMode = false;
+    canvas.freeDrawingBrush.color = currentColor;
+    canvas.freeDrawingBrush.width = currentWidth;
+
+    // 모드별 동작
+    canvas.on("mouse:down", handleMouseDown);
+  }
+
+  function resizeCanvas() {
+    const wrapper = document.querySelector(".canvas-wrapper");
+    if (!wrapper || !canvas) return;
+    const rect = wrapper.getBoundingClientRect();
+
+    const padding = 16;
+    canvas.setWidth(rect.width - padding);
+    canvas.setHeight(rect.height - padding);
+    canvas.renderAll();
+  }
+
+  function setMode(mode) {
+    currentMode = mode;
+    canvas.isDrawingMode = (mode === "draw");
+
+    if (mode === "draw") {
+      canvas.freeDrawingBrush.color = currentColor;
+      canvas.freeDrawingBrush.width = currentWidth;
+    }
+  }
+
+  function handleMouseDown(opt) {
+    const evt = opt.e;
+    const pointer = canvas.getPointer(evt);
+
+    if (currentMode === "rect") {
+      const rect = new fabric.Rect({
+        left: pointer.x - 40,
+        top: pointer.y - 30,
+        width: 80,
+        height: 60,
+        fill: "rgba(0,0,0,0)",
+        stroke: currentColor,
+        strokeWidth: currentWidth,
+        strokeUniform: true
+      });
+      canvas.add(rect);
+    } else if (currentMode === "circle") {
+      const circle = new fabric.Circle({
+        left: pointer.x - 30,
+        top: pointer.y - 30,
+        radius: 30,
+        fill: "rgba(0,0,0,0)",
+        stroke: currentColor,
+        strokeWidth: currentWidth,
+        strokeUniform: true
+      });
+      canvas.add(circle);
+    }
+  }
+
+  // -----------------------------
+  // 툴바 이벤트
+  // -----------------------------
+  function initToolbar() {
+    const modeButtons = document.querySelectorAll(".mode-btn");
+    modeButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        modeButtons.forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        setMode(btn.dataset.mode);
+      });
+    });
+
+    const colorInput = document.getElementById("strokeColor");
+    colorInput.addEventListener("input", () => {
+      currentColor = colorInput.value;
+      if (canvas.isDrawingMode) {
+        canvas.freeDrawingBrush.color = currentColor;
+      }
+      const active = canvas.getActiveObjects();
+      active.forEach(obj => {
+        obj.set("stroke", currentColor);
+      });
+      canvas.requestRenderAll();
+    });
+
+    const widthInput = document.getElementById("strokeWidth");
+    widthInput.addEventListener("change", () => {
+      const val = parseInt(widthInput.value, 10) || 1;
+      currentWidth = val;
+      if (canvas.isDrawingMode) {
+        canvas.freeDrawingBrush.width = currentWidth;
+      }
+      const active = canvas.getActiveObjects();
+      active.forEach(obj => {
+        obj.set("strokeWidth", currentWidth);
+      });
+      canvas.requestRenderAll();
+    });
+
+    document.getElementById("btnClear").addEventListener("click", () => {
+      canvas.clear();
+      canvas.setBackgroundColor("#ffffff", canvas.renderAll.bind(canvas));
+    });
+
+    document.getElementById("btnDelete").addEventListener("click", () => {
+      const active = canvas.getActiveObjects();
+      active.forEach(obj => canvas.remove(obj));
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+    });
+
+    // Interaction behaviors
+    const behaviorButtons = document.querySelectorAll(".behavior-btn");
+    behaviorButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const behavior = btn.dataset.behavior;
+        const active = canvas.getActiveObjects();
+        if (active.length === 0) {
+          alert("먼저 객체를 선택하세요.");
+          return;
+        }
+        active.forEach(obj => attachBehavior(obj, behavior));
+        canvas.requestRenderAll();
+      });
+    });
+
+    // Gallery
+    document.getElementById("btnSaveToGallery")
+      .addEventListener("click", saveToGallery);
+    document.getElementById("btnRefreshGallery")
+      .addEventListener("click", renderGallery);
+  }
+
+  // -----------------------------
+  // 동작 속성 부여 / 애니메이션 엔진
+  // -----------------------------
+  function attachBehavior(obj, behavior) {
+    obj.behavior = behavior;
+
+    if (behavior === "servo") {
+      obj.servoBaseAngle = obj.angle || 0;
+      obj.servoAmplitude = 45; // ±45도
+    }
+    if (behavior === "led") {
+      obj.ledBaseOpacity = obj.opacity ?? 1;
+    }
+    if (behavior === "buzzer") {
+      spawnBuzzerNote(obj);
+    }
+  }
+
+  // buzzer: 작은 음표 아이콘 생성 후 서서히 사라지게
+  function spawnBuzzerNote(refObj) {
+    const note = new fabric.Text("♪", {
+      left: (refObj.left || 0) + (refObj.width || 40),
+      top: (refObj.top || 0) - 10,
+      fill: "#ef4444",
+      fontSize: 24,
+      opacity: 1,
+      selectable: false,
+      evented: false
+    });
+    note.behavior = "noteFade";
+    canvas.add(note);
+  }
+
+  let lastTime = 0;
+  function animationLoop(timestamp) {
+    if (!canvas) {
+      requestAnimationFrame(animationLoop);
+      return;
+    }
+    if (!lastTime) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    const objs = canvas.getObjects();
+    const timeSec = timestamp / 1000;
+
+    objs.forEach(obj => {
+      switch (obj.behavior) {
+        case "motor":
+          obj.rotate((obj.angle || 0) + 60 * dt); // 초당 60도 회전
+          obj.setCoords();
+          break;
+        case "servo":
+          const base = obj.servoBaseAngle || 0;
+          const amp = obj.servoAmplitude || 45;
+          obj.rotate(base + Math.sin(timeSec * 2) * amp); // 왕복
+          obj.setCoords();
+          break;
+        case "led":
+          const baseOp = obj.ledBaseOpacity || 1;
+          obj.set("opacity", baseOp * (0.4 + 0.6 * (0.5 + 0.5 * Math.sin(timeSec * 4))));
+          break;
+        case "buzzer":
+          // buzzer 자체는 고정, 음표는 noteFade로 처리
+          break;
+        case "noteFade":
+          obj.set("top", (obj.top || 0) - 20 * dt);
+          obj.set("opacity", (obj.opacity || 1) - 0.7 * dt);
+          if (obj.opacity <= 0) {
+            canvas.remove(obj);
+          }
+          break;
+        default:
+          break;
+      }
+    });
+
+    canvas.requestRenderAll();
+    requestAnimationFrame(animationLoop);
+  }
+
+  // -----------------------------
+  // Gallery (브라우저 메모리용)
+  // -----------------------------
+  function saveToGallery() {
+    const title = "Sketch " + (galleryStore.length + 1);
+    const dataUrl = canvas.toDataURL({ format: "png", quality: 0.8 });
+    const json = canvas.toJSON();
+
+    galleryStore.push({ title, dataUrl, json });
+    alert("갤러리에 저장되었습니다. Gallery 탭에서 확인하세요.");
+  }
+
+  function renderGallery() {
+    const grid = document.getElementById("galleryGrid");
+    grid.innerHTML = "";
+
+    if (galleryStore.length === 0) {
+      grid.innerHTML = "<p style='font-size:13px;color:#6b7280;'>현재 저장된 스케치가 없습니다.</p>";
+      return;
+    }
+
+    galleryStore.forEach((item, idx) => {
+      const card = document.createElement("div");
+      card.className = "thumb-card";
+      const img = document.createElement("img");
+      img.src = item.dataUrl;
+      const title = document.createElement("div");
+      title.className = "thumb-title";
+      title.textContent = item.title;
+
+      // 클릭 시 현재 캔버스에 로드
+      img.addEventListener("click", () => {
+        canvas.loadFromJSON(item.json, () => {
+          canvas.renderAll();
+          alert("이 스케치를 캔버스로 불러왔습니다.");
+        });
+      });
+
+      card.appendChild(img);
+      card.appendChild(title);
+      grid.appendChild(card);
+    });
+  }
+
+  // -----------------------------
+  // 초기화
+  // -----------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    initCanvas();
+    initToolbar();
+    requestAnimationFrame(animationLoop);
+  });
+</script>
+</body>
+</html>
